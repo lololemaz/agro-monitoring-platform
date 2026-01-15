@@ -217,6 +217,9 @@ docker compose -f docker-compose.dev.yml up --build
 # Iniciar serviços (produção)
 docker compose up --build -d
 
+# Cria a conta do usuario superadmin
+docker compose exec api python -m app.cli "admin@example.com" "senha123" "Admin"
+
 # Parar serviços
 docker compose down
 docker compose -f docker-compose.dev.yml down

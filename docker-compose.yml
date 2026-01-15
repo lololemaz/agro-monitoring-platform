@@ -37,9 +37,18 @@ services:
       DEBUG: "false"
       ENVIRONMENT: production
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:80,http://localhost:8080}
+    ports:
+      - "${API_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
+    command: >
+      sh -c "
+        echo '⏳ Executando migrações...' &&
+        alembic upgrade head &&
+        echo '🚀 Iniciando servidor...' &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
     restart: unless-stopped
     networks:
       - agro_network
