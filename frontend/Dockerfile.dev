@@ -1,0 +1,19 @@
+# Dockerfile para desenvolvimento do frontend
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copiar arquivos de dependências
+COPY package.json package-lock.json ./
+
+# Instalar dependências
+RUN npm ci
+
+# Copiar código fonte (será sobrescrito pelo volume em dev)
+COPY . .
+
+# Expor porta do Vite
+EXPOSE 5173
+
+# Iniciar servidor de desenvolvimento
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

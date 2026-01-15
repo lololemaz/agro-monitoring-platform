@@ -1,0 +1,368 @@
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-sans/700.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Kernova Enterprise Light Theme - Clean & Professional */
+    --background: 210 20% 98%;
+    --foreground: 222 40% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 40% 15%;
+    --card-elevated: 210 20% 99%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 40% 15%;
+
+    /* Primary - Kernova Teal/Green */
+    --primary: 162 70% 38%;
+    --primary-foreground: 0 0% 100%;
+    --primary-muted: 162 50% 30%;
+
+    /* Secondary - Soft Gray */
+    --secondary: 215 25% 94%;
+    --secondary-foreground: 222 30% 25%;
+
+    --muted: 215 20% 96%;
+    --muted-foreground: 220 15% 50%;
+
+    /* Accent - Blue */
+    --accent: 210 90% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 25% 90%;
+    --input: 215 25% 92%;
+    --ring: 162 70% 38%;
+
+    --radius: 0.625rem;
+
+    /* Status colors - Clear & Readable */
+    --status-ok: 152 65% 40%;
+    --status-ok-bg: 152 50% 95%;
+    --status-ok-border: 152 50% 75%;
+    --status-warning: 38 90% 50%;
+    --status-warning-bg: 38 85% 95%;
+    --status-warning-border: 38 85% 70%;
+    --status-critical: 0 75% 55%;
+    --status-critical-bg: 0 70% 96%;
+    --status-critical-border: 0 70% 75%;
+    --status-offline: 220 15% 55%;
+    --status-offline-bg: 220 15% 95%;
+    --status-offline-border: 220 15% 75%;
+
+    /* Chart colors - Vibrant but readable */
+    --chart-moisture: 200 85% 50%;
+    --chart-temperature: 25 90% 50%;
+    --chart-ec: 280 65% 55%;
+    --chart-nitrogen: 152 65% 45%;
+    --chart-phosphorus: 340 75% 50%;
+    --chart-potassium: 45 90% 50%;
+    --chart-ph: 265 65% 55%;
+    --chart-health: 162 70% 38%;
+
+    /* Sidebar - Light with accent */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 40% 25%;
+    --sidebar-primary: 162 70% 38%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 25% 96%;
+    --sidebar-accent-foreground: 222 40% 15%;
+    --sidebar-border: 215 25% 90%;
+    --sidebar-ring: 162 70% 38%;
+
+    /* Special effects - Subtle for light theme */
+    --glow-primary: 0 0 20px hsl(162 70% 38% / 0.15);
+    --glow-accent: 0 0 20px hsl(210 90% 50% / 0.1);
+    --glow-status-ok: 0 0 12px hsl(152 65% 40% / 0.2);
+    --glow-status-warning: 0 0 12px hsl(38 90% 50% / 0.2);
+    --glow-status-critical: 0 0 12px hsl(0 75% 55% / 0.2);
+
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(162 70% 38%) 0%, hsl(210 90% 50%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(210 20% 99%) 100%);
+    --gradient-sidebar: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(210 20% 98%) 100%);
+    --gradient-glass: linear-gradient(135deg, hsl(0 0% 100% / 0.9) 0%, hsl(210 20% 98% / 0.8) 100%);
+  }
+
+  /* Dark theme option */
+  .dark {
+    --background: 222 30% 8%;
+    --foreground: 210 20% 95%;
+
+    --card: 222 25% 11%;
+    --card-foreground: 210 20% 95%;
+    --card-elevated: 222 25% 14%;
+
+    --popover: 222 25% 13%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 162 70% 50%;
+    --primary-foreground: 222 30% 8%;
+    --primary-muted: 162 60% 40%;
+
+    --secondary: 220 20% 18%;
+    --secondary-foreground: 210 20% 85%;
+
+    --muted: 220 20% 15%;
+    --muted-foreground: 215 15% 55%;
+
+    --accent: 210 90% 55%;
+    --accent-foreground: 222 30% 8%;
+
+    --border: 220 20% 18%;
+    --input: 220 20% 16%;
+    --ring: 162 70% 50%;
+
+    --status-ok: 152 70% 50%;
+    --status-ok-bg: 152 70% 12%;
+    --status-ok-border: 152 70% 25%;
+    --status-warning: 38 95% 55%;
+    --status-warning-bg: 38 95% 12%;
+    --status-warning-border: 38 95% 25%;
+    --status-critical: 0 85% 60%;
+    --status-critical-bg: 0 85% 12%;
+    --status-critical-border: 0 85% 25%;
+    --status-offline: 220 15% 45%;
+    --status-offline-bg: 220 15% 15%;
+    --status-offline-border: 220 15% 25%;
+
+    --sidebar-background: 222 35% 7%;
+    --sidebar-foreground: 210 20% 80%;
+    --sidebar-primary: 162 70% 50%;
+    --sidebar-primary-foreground: 222 30% 8%;
+    --sidebar-accent: 220 25% 15%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 220 20% 15%;
+    --sidebar-ring: 162 70% 50%;
+
+    --glow-primary: 0 0 20px hsl(162 70% 50% / 0.4);
+    --glow-accent: 0 0 20px hsl(210 90% 55% / 0.3);
+    --glow-status-ok: 0 0 15px hsl(152 70% 50% / 0.4);
+    --glow-status-warning: 0 0 15px hsl(38 95% 55% / 0.4);
+    --glow-status-critical: 0 0 15px hsl(0 85% 60% / 0.4);
+
+    --gradient-hero: linear-gradient(135deg, hsl(162 70% 50%) 0%, hsl(210 90% 55%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(222 25% 13%) 0%, hsl(222 25% 10%) 100%);
+    --gradient-sidebar: linear-gradient(180deg, hsl(222 35% 9%) 0%, hsl(222 35% 6%) 100%);
+    --gradient-glass: linear-gradient(135deg, hsl(220 20% 15% / 0.8) 0%, hsl(220 20% 12% / 0.6) 100%);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-feature-settings: 'tnum' on, 'lnum' on;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  /* Status utilities */
+  .status-ok {
+    @apply bg-status-ok-bg text-status-ok border-status-ok-border;
+  }
+  
+  .status-warning {
+    @apply bg-status-warning-bg text-status-warning border-status-warning-border;
+  }
+  
+  .status-critical {
+    @apply bg-status-critical-bg text-status-critical border-status-critical-border;
+  }
+  
+  .status-offline {
+    @apply bg-status-offline-bg text-status-offline border-status-offline-border;
+  }
+
+  /* Card variants */
+  .card-glass {
+    background: var(--gradient-glass);
+    @apply backdrop-blur-sm border border-border/50;
+  }
+
+  .card-elevated {
+    @apply bg-card-elevated shadow-lg;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 hover:border-primary/30;
+  }
+
+  /* Data display */
+  .data-value {
+    @apply text-2xl font-semibold tabular-nums tracking-tight;
+  }
+
+  .data-value-lg {
+    @apply text-3xl font-bold tabular-nums tracking-tight;
+  }
+
+  .data-label {
+    @apply text-[11px] text-muted-foreground uppercase tracking-widest font-medium;
+  }
+
+  .metric-icon {
+    @apply w-4 h-4 flex-shrink-0;
+  }
+
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+
+  .glow-accent {
+    box-shadow: var(--glow-accent);
+  }
+
+  .glow-status-ok {
+    box-shadow: var(--glow-status-ok);
+  }
+
+  .glow-status-warning {
+    box-shadow: var(--glow-status-warning);
+  }
+
+  .glow-status-critical {
+    box-shadow: var(--glow-status-critical);
+  }
+
+  /* Navigation */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200;
+    @apply text-muted-foreground hover:text-foreground hover:bg-secondary;
+  }
+
+  .nav-item-active {
+    @apply bg-primary/10 text-primary border-l-2 border-primary;
+  }
+
+  /* Metric cards */
+  .metric-card {
+    @apply relative overflow-hidden rounded-lg border bg-card p-4 transition-all duration-300;
+  }
+
+  .metric-card::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.05) 0%, transparent 50%);
+  }
+
+  .metric-card:hover::before {
+    @apply opacity-100;
+  }
+
+  /* Charts */
+  .chart-container {
+    @apply bg-card rounded-lg border p-4;
+  }
+
+  /* Alert severity indicators */
+  .alert-critical {
+    @apply border-l-4 border-l-status-critical bg-status-critical-bg/50;
+  }
+
+  .alert-warning {
+    @apply border-l-4 border-l-status-warning bg-status-warning-bg/50;
+  }
+
+  .alert-info {
+    @apply border-l-4 border-l-primary bg-primary/5;
+  }
+
+  /* Sidebar styling */
+  .sidebar-gradient {
+    background: var(--gradient-sidebar);
+  }
+
+  /* Loading states */
+  .skeleton-pulse {
+    @apply animate-pulse bg-muted rounded;
+  }
+
+  /* Score displays */
+  .health-score {
+    @apply inline-flex items-center justify-center rounded-full font-bold tabular-nums;
+  }
+
+  .health-score-lg {
+    @apply w-20 h-20 text-2xl;
+  }
+
+  .health-score-md {
+    @apply w-14 h-14 text-lg;
+  }
+
+  .health-score-sm {
+    @apply w-10 h-10 text-sm;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes glow {
+    from {
+      box-shadow: 0 0 10px hsl(var(--primary) / 0.2);
+    }
+    to {
+      box-shadow: 0 0 20px hsl(var(--primary) / 0.4);
+    }
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-hero);
+  }
+
+  /* Scrollbar styling */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+}
