@@ -1,0 +1,95 @@
+# Docker Compose para Desenvolvimento
+# Hot reload habilitado no frontend e backend
+
+services:
+  # ===================================
+  # Database - TimescaleDB
+  # ===================================
+  db:
+    image: timescale/timescaledb:latest-pg14
+    container_name: agro_db_dev
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-mango_farm_monitor}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-mango_farm_monitor}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - agro_network_dev
+
+  # ===================================
+  # Backend - FastAPI (hot reload)
+  # ===================================
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: agro_api_dev
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-mango_farm_monitor}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key}
+      DEBUG: "true"
+      ENVIRONMENT: development
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:8000,http://localhost:8080}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      # Hot reload - monta código local
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo '⏳ Executando migrações...' &&
+        alembic upgrade head &&
+        echo '🚀 Iniciando servidor backend...' &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+    networks:
+      - agro_network_dev
+
+  # ===================================
+  # Frontend - React (vite dev server)
+  # ===================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: agro_frontend_dev
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api}
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      # Hot reload - monta código local
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tailwind.config.ts:/app/tailwind.config.ts
+      - ./frontend/postcss.config.js:/app/postcss.config.js
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json
+      # Não montar node_modules (usar do container)
+      - /app/node_modules
+    depends_on:
+      - api
+    networks:
+      - agro_network_dev
+
+volumes:
+  postgres_data_dev:
+
+networks:
+  agro_network_dev:
+    driver: bridge

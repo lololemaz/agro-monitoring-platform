@@ -1,0 +1,31 @@
+# Dockerfile para desenvolvimento
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Instalar dependências do sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Copiar arquivos de dependências
+COPY pyproject.toml uv.lock* ./
+
+# Criar ambiente virtual e instalar dependências (incluindo dev)
+RUN uv venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Instalar dependências principais + dev
+RUN uv pip install --no-cache -r pyproject.toml && \
+    uv pip install --no-cache ruff pylint pytest pytest-asyncio httpx
+
+# Copiar código (será sobrescrito pelo volume em dev)
+COPY . .
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
