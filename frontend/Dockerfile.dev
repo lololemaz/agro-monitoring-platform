@@ -12,8 +12,8 @@ RUN npm ci
 # Copiar código fonte (será sobrescrito pelo volume em dev)
 COPY . .
 
-# Expor porta do Vite
-EXPOSE 5173
+# Expor porta do Vite (configurado em vite.config.ts)
+EXPOSE 8080
 
 # Iniciar servidor de desenvolvimento
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

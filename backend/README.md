@@ -102,7 +102,7 @@ CREATE TABLE farms (
     total_area DECIMAL(10, 2), -- hectares
     address TEXT,
     coordinates JSONB, -- {lat, lng}
-    timezone VARCHAR(50) DEFAULT 'America/Sao_Paulo',
+    timezone VARCHAR(50) DEFAULT 'America/Recife',
     settings JSONB DEFAULT '{}',
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),

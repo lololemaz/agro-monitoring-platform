@@ -97,7 +97,7 @@ def upgrade() -> None:
         sa.Column("total_area", sa.Numeric(10, 2)),
         sa.Column("address", sa.Text),
         sa.Column("coordinates", postgresql.JSONB),
-        sa.Column("timezone", sa.String(50), server_default="'America/Sao_Paulo'"),
+        sa.Column("timezone", sa.String(50), server_default="'America/Recife'"),
         sa.Column("settings", postgresql.JSONB, server_default="{}"),
         sa.Column("is_active", sa.Boolean, server_default="true"),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),

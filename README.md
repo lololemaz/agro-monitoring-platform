@@ -5,6 +5,7 @@ Plataforma de monitoramento agrícola com backend FastAPI e frontend React.
 ## 📋 Índice
 
 - [Pré-requisitos](#-pré-requisitos)
+- [Mapeamento de Portas](#-mapeamento-de-portas)
 - [Início Rápido](#-início-rápido)
 - [Desenvolvimento](#-desenvolvimento)
 - [Produção](#-produção)
@@ -18,6 +19,30 @@ Plataforma de monitoramento agrícola com backend FastAPI e frontend React.
 
 - [Docker](https://docs.docker.com/get-docker/) (v20.10+)
 - [Docker Compose](https://docs.docker.com/compose/install/) (v2.0+)
+
+---
+
+## 🌐 Mapeamento de Portas
+
+### Modo Desenvolvimento (`docker-compose.dev.yml`)
+
+| Serviço | Porta | URL | Credenciais |
+|---------|-------|-----|-------------|
+| Frontend (Vite) | 5173 | http://localhost:5173 | - |
+| Backend API | 8000 | http://localhost:8000 | - |
+| Swagger Docs | 8000 | http://localhost:8000/docs | - |
+| ReDoc | 8000 | http://localhost:8000/redoc | - |
+| PostgreSQL | 5432 | localhost:5432 | `postgres` / `postgres` |
+| pgAdmin | 5050 | http://localhost:5050 | `admin@admin.com` / `admin` |
+
+### Modo Produção (`docker-compose.yml`)
+
+| Serviço | Porta | URL | Descrição |
+|---------|-------|-----|-----------|
+| Frontend (nginx) | 80 | http://localhost | App React buildado |
+| Reverse Proxy | 8080 | http://localhost:8080 | API + Frontend unificados |
+| Backend API | 8000 | http://localhost:8000 | FastAPI (interno) |
+| PostgreSQL | - | interno | Não exposto externamente |
 
 ---
 
@@ -53,26 +78,44 @@ docker compose up --build
 
 ## 💻 Desenvolvimento
 
-O ambiente de desenvolvimento inclui hot reload para frontend e backend.
+O ambiente de desenvolvimento inclui hot reload para frontend e backend, além do pgAdmin para gerenciamento do banco de dados.
 
 ```bash
 docker compose -f docker-compose.dev.yml up --build
 ```
 
-### URLs de Acesso
-
-| Serviço | URL | Descrição |
-|---------|-----|-----------|
-| Frontend | http://localhost:5173 | Aplicação React (Vite) |
-| Backend API | http://localhost:8000 | FastAPI |
-| API Docs | http://localhost:8000/docs | Swagger UI |
-| ReDoc | http://localhost:8000/redoc | Documentação alternativa |
-| Database | localhost:5432 | TimescaleDB/PostgreSQL |
-
 ### Hot Reload
 
 - **Backend**: Alterações em `backend/app/` são detectadas automaticamente
 - **Frontend**: Alterações em `frontend/src/` são refletidas instantaneamente
+
+### 🗄️ pgAdmin (Gerenciador de Banco de Dados)
+
+**Acesso:** http://localhost:5050
+
+**Login:**
+- Email: `admin@admin.com`
+- Senha: `admin`
+
+#### Configurar conexão com o banco:
+
+1. Clique em **Add New Server**
+2. Aba **General** → Name: `Agro Dev`
+3. Aba **Connection** → Preencha conforme abaixo:
+
+| Campo | Valor |
+|-------|-------|
+| **Host name/address** | `db` |
+| **Port** | `5432` |
+| **Maintenance database** | `mango_farm_monitor` |
+| **Username** | `postgres` |
+| **Password** | `postgres` |
+
+4. Marque ✅ **Save password**
+5. Clique em **Save**
+
+> ⚠️ **IMPORTANTE:** Use `db` como host, **NÃO use** `localhost`!  
+> O pgAdmin roda dentro de um container Docker e `db` é o nome do serviço do banco na rede interna.
 
 ### Executar em background
 
@@ -101,12 +144,7 @@ O ambiente de produção utiliza builds otimizados e nginx como reverse proxy.
 docker compose up --build -d
 ```
 
-### URLs de Acesso
-
-| Serviço | URL | Descrição |
-|---------|-----|-----------|
-| Aplicação | http://localhost:8080 | Proxy unificado (API + Frontend) |
-| Frontend | http://localhost:80 | Frontend direto (nginx) |
+> 📌 Veja o [Mapeamento de Portas](#-mapeamento-de-portas) para URLs de acesso.
 
 ### Arquitetura de Produção
 

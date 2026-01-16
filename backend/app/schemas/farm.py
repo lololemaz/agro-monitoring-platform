@@ -15,7 +15,7 @@ class FarmBase(BaseModel):
     total_area: Decimal | None = None
     address: str | None = None
     coordinates: dict | None = None
-    timezone: str = "America/Sao_Paulo"
+    timezone: str = "America/Recife"
     settings: dict = {}
 
 

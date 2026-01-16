@@ -38,7 +38,7 @@ class Farm(Base):
     total_area = Column(Numeric(10, 2))
     address = Column(Text)
     coordinates = Column(JSONB)
-    timezone = Column(String(50), default="America/Sao_Paulo")
+    timezone = Column(String(50), default="America/Recife")
     settings = Column(JSONB, default={})
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -69,7 +69,7 @@ services:
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api}
     ports:
-      - "${FRONTEND_PORT:-5173}:5173"
+      - "${FRONTEND_PORT:-5173}:8080"
     volumes:
       # Hot reload - monta código local
       - ./frontend/src:/app/src
@@ -87,8 +87,29 @@ services:
     networks:
       - agro_network_dev
 
+  # ===================================
+  # pgAdmin - Interface gráfica do PostgreSQL
+  # ===================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: agro_pgadmin_dev
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data_dev:/var/lib/pgadmin
+    depends_on:
+      - db
+    networks:
+      - agro_network_dev
+
 volumes:
   postgres_data_dev:
+  pgadmin_data_dev:
 
 networks:
   agro_network_dev:

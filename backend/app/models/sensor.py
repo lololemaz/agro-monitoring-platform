@@ -84,6 +84,7 @@ class Sensor(Base):
         nullable=False,
     )
     name = Column(String(255), nullable=False)
+    dev_eui = Column(String(16), unique=True)  # Device EUI para ChirpStack (LoRaWAN)
     serial_number = Column(String(100), unique=True)
     mac_address = Column(String(50), unique=True)
     api_key = Column(String(255), unique=True)
