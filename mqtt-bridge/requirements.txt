@@ -1,0 +1,9 @@
+# --- Base de données ---
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+
+# --- Communication MQTT ---
+paho-mqtt>=1.6.1
+
+# --- Utilitaires ---
+python-dotenv>=1.0.0

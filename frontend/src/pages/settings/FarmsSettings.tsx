@@ -284,7 +284,7 @@ export default function FarmsSettings() {
                 <MapPin className="w-5 h-5 text-blue-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats.totalArea.toFixed(0)} ha</p>
+                <p className="text-2xl font-bold">{Number(stats.totalArea || 0).toFixed(0)} ha</p>
                 <p className="text-xs text-muted-foreground">Área Total</p>
               </div>
             </div>
