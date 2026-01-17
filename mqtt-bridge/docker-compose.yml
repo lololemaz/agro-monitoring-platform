@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  mqtt-bridge:
+    build: .
+    container_name: mqtt_to_db_bridge
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/mango_farm_monitor}
+      MQTT_BROKER: ${MQTT_BROKER:-}
+      MQTT_PORT: ${MQTT_PORT:-8883}
+      MQTT_TOPIC: ${MQTT_TOPIC:-}
+      CA_CERT_PATH: ${CA_CERT_PATH:-/app/certs/ca.crt}
+      CLIENT_CERT_PATH: ${CLIENT_CERT_PATH:-/app/certs/client.crt}
+      CLIENT_KEY_PATH: ${CLIENT_KEY_PATH:-/app/certs/client.key}
+    volumes:
+      - ./certs:/app/certs:ro  # Montage des certificats en lecture seule
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - mqtt_network
+
+networks:
+  mqtt_network:
+    driver: bridge

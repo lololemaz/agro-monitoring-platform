@@ -88,6 +88,36 @@ services:
     networks:
       - agro_network
 
+  # ===================================
+  # MQTT Bridge - Conecta MQTT ao Database
+  # ===================================
+  mqtt-bridge:
+    build:
+      context: ./mqtt-bridge
+      dockerfile: Dockerfile
+    container_name: mqtt_to_db_bridge
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-mango_farm_monitor}
+      MQTT_BROKER: ${MQTT_BROKER:-10.0.0.4}
+      MQTT_PORT: ${MQTT_PORT:-1883}
+      MQTT_TOPIC: ${MQTT_TOPIC:-application/+/device/+/event/up}
+      CA_CERT_PATH: ${CA_CERT_PATH:-/app/certs/ca.pem}
+      CLIENT_CERT_PATH: ${CLIENT_CERT_PATH:-/app/certs/client-csr.pem}
+      CLIENT_KEY_PATH: ${CLIENT_KEY_PATH:-/app/certs/client-csr-key.pem}
+    volumes:
+      - ./mqtt-bridge/certs:/app/certs:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - agro_network
+
 volumes:
   postgres_data:
 
