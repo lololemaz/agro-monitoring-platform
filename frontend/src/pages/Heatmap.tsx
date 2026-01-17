@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { farmTrees, HeatmapMetricType, TreeData, metricConfigs } from "@/data/heatmapData";
+import { useNavigate, useParams } from "react-router-dom";
+import { HeatmapMetricType, TreeData, metricConfigs } from "@/data/heatmapData";
 import { HeatmapCanvas } from "@/components/heatmap/HeatmapCanvas";
 import { HeatmapLegend } from "@/components/heatmap/HeatmapLegend";
 import { HeatmapFilters } from "@/components/heatmap/HeatmapFilters";
 import { HeatmapStats } from "@/components/heatmap/HeatmapStats";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
@@ -16,12 +17,17 @@ import {
   Download, 
   Maximize2,
   TreeDeciduous,
-  Activity
+  Activity,
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
-import { mockFarm } from "@/data/mockData";
+import { useHeatmapData } from "@/hooks/useHeatmapData";
 
 export default function Heatmap() {
   const navigate = useNavigate();
+  const { farmId } = useParams<{ farmId: string }>();
+  
+  const { trees, isLoading, error, isUsingMockData, refresh } = useHeatmapData(farmId || null);
   
   const [selectedMetric, setSelectedMetric] = useState<HeatmapMetricType>('soilMoisture');
   const [selectedPlotId, setSelectedPlotId] = useState<string | undefined>();
@@ -31,7 +37,7 @@ export default function Heatmap() {
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
 
   const filteredTrees = useMemo(() => {
-    let result = farmTrees;
+    let result = trees;
     if (selectedPlotId) {
       result = result.filter(t => t.plotId === selectedPlotId);
     }
@@ -39,7 +45,7 @@ export default function Heatmap() {
       result = result.filter(t => t.isCritical);
     }
     return result;
-  }, [selectedPlotId, showCriticalOnly]);
+  }, [trees, selectedPlotId, showCriticalOnly]);
 
   const handleTreeClick = (tree: TreeData) => {
     setSelectedTree(tree);
@@ -52,6 +58,17 @@ export default function Heatmap() {
     setShowCriticalOnly(false);
     setShowOutliers(false);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Carregando dados do heatmap...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -69,11 +86,22 @@ export default function Heatmap() {
                 <div className="flex items-center gap-2">
                   <h1 className="font-bold text-lg leading-tight">Heatmap Espacial</h1>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">LIVE</span>
+                  {isUsingMockData && (
+                    <Badge variant="outline" className="text-xs">
+                      <AlertTriangle className="w-3 h-3 mr-1" />
+                      Demo
+                    </Badge>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground">{mockFarm.name} • {farmTrees.length.toLocaleString()} árvores</p>
+                <p className="text-xs text-muted-foreground">
+                  {trees.length.toLocaleString()} {isUsingMockData ? 'pontos (demo)' : 'sensores'}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={refresh} className="hidden sm:flex">
+                Atualizar
+              </Button>
               <Button variant="outline" size="sm" className="hidden sm:flex">
                 <Download className="w-4 h-4 mr-2" />
                 Exportar
@@ -86,6 +114,12 @@ export default function Heatmap() {
         </div>
       </header>
 
+      {error && (
+        <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-2">
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
+
       <div className="flex-1 flex">
         <aside className="w-72 border-r border-border bg-card/50 p-4 hidden lg:flex flex-col gap-6 overflow-y-auto">
           <div>
@@ -94,7 +128,7 @@ export default function Heatmap() {
               <h2 className="font-semibold text-sm">Filtros</h2>
             </div>
             <HeatmapFilters
-              trees={farmTrees}
+              trees={trees}
               selectedMetric={selectedMetric}
               onMetricChange={setSelectedMetric}
               selectedPlotId={selectedPlotId}
@@ -116,7 +150,7 @@ export default function Heatmap() {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <TreeDeciduous className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold text-sm">Estatísticas</h2>
+              <h2 className="font-semibold text-sm">Estatisticas</h2>
             </div>
             <HeatmapStats trees={filteredTrees} metric={selectedMetric} />
           </div>
@@ -124,7 +158,7 @@ export default function Heatmap() {
 
         <main className="flex-1 relative">
           <HeatmapCanvas
-            trees={farmTrees}
+            trees={trees}
             metric={selectedMetric}
             showCriticalOnly={showCriticalOnly}
             showOutliers={showOutliers}
@@ -143,25 +177,25 @@ export default function Heatmap() {
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <TreeDeciduous className="w-5 h-5 text-primary" />
-              {selectedTree?.id}
+              {selectedTree?.plotName || selectedTree?.id}
             </SheetTitle>
           </SheetHeader>
           
           {selectedTree && (
             <div className="mt-6 space-y-6">
               <div className="space-y-3">
-                <h3 className="text-sm font-medium text-muted-foreground">Informações</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">Informacoes</h3>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <p className="text-muted-foreground text-xs">Talhão</p>
+                    <p className="text-muted-foreground text-xs">Talhao</p>
                     <p className="font-medium">{selectedTree.plotName}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-xs">Variedade</p>
+                    <p className="text-muted-foreground text-xs">Tipo</p>
                     <p className="font-medium">{selectedTree.variety}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-xs">Posição</p>
+                    <p className="text-muted-foreground text-xs">Posicao</p>
                     <p className="font-medium">Linha {selectedTree.row + 1}, Col {selectedTree.col + 1}</p>
                   </div>
                   <div>
@@ -172,11 +206,12 @@ export default function Heatmap() {
               </div>
 
               <div className="space-y-3">
-                <h3 className="text-sm font-medium text-muted-foreground">Métricas</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">Metricas</h3>
                 <div className="space-y-2">
                   {Object.entries(selectedTree.metrics).map(([key, value]) => {
                     const metricKey = key as HeatmapMetricType;
                     const config = metricConfigs[metricKey];
+                    if (!config) return null;
                     const isOptimal = value >= config.optimalMin && value <= config.optimalMax;
                     
                     return (
@@ -193,7 +228,7 @@ export default function Heatmap() {
 
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => navigate(`/plot/${selectedTree.plotId}`)}>
-                  Ver Talhão
+                  Ver Talhao
                 </Button>
                 <Button className="flex-1">Criar Evento</Button>
               </div>

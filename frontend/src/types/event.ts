@@ -125,4 +125,7 @@ export interface EventFilters {
   scope?: EventScope;
   start_date?: string;
   end_date?: string;
+  limit?: number;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
 }

@@ -394,9 +394,8 @@ export default function Organizations() {
       email: org.email || '',
       phone: org.phone ? formatPhone(org.phone) : '',
       address: org.address || '',
-      // TODO: Get owner data from API if available
-      owner_first_name: '',
-      owner_last_name: '',
+      owner_first_name: org.owner_first_name || '',
+      owner_last_name: org.owner_last_name || '',
       owner_password: '',
       resetPassword: false,
     });

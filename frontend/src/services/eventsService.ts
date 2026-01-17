@@ -25,8 +25,8 @@ export const eventsService = {
   async getFarmEvents(farmId: string, limit?: number): Promise<Event[]> {
     return this.getEvents({ 
       farm_id: farmId,
-      ...(limit && { limit }),
-    } as EventFilters & { limit?: number });
+      limit,
+    });
   },
 
   /**

@@ -29,8 +29,8 @@ export const plotsService = {
   /**
    * Get plots with current readings and status
    */
-  async getPlotsWithReadings(farmId: string): Promise<PlotWithReadings[]> {
-    const response = await api.get<PlotWithReadings[]>('/plots/', {
+  async getPlotsWithReadings(farmId?: string): Promise<PlotWithReadings[]> {
+    const response = await api.get<PlotWithReadings[]>('/plots/with-readings/', {
       params: { 
         farm_id: farmId,
         include_readings: true,

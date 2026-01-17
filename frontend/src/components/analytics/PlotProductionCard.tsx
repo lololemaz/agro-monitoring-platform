@@ -1,11 +1,8 @@
-import { PlotProduction, productionStageLabels, productionStageColors, riskLevelLabels } from '@/data/analyticsData';
+import { PlotProduction } from '@/hooks/useAnalytics';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { 
-  TreeDeciduous, 
-  Flower2, 
   Apple, 
   Calendar, 
   AlertTriangle,
@@ -21,21 +18,49 @@ interface PlotProductionCardProps {
   className?: string;
 }
 
-export function PlotProductionCard({ plot, onClick, className }: PlotProductionCardProps) {
-  const stageProgress = {
-    'floração': 20,
-    'frutificação': 40,
-    'crescimento': 60,
-    'maturação': 80,
-    'pronto_colheita': 100,
-  }[plot.productionStage];
+const stageLabels: Record<string, string> = {
+  'floracao': 'Floracao',
+  'frutificacao': 'Frutificacao',
+  'crescimento': 'Crescimento',
+  'maturacao': 'Maturacao',
+  'pronto_colheita': 'Pronto Colheita',
+};
 
-  const riskColors = {
-    'baixo': 'bg-status-ok/10 text-status-ok border-status-ok/30',
-    'médio': 'bg-chart-temperature/10 text-chart-temperature border-chart-temperature/30',
-    'alto': 'bg-status-warning/10 text-status-warning border-status-warning/30',
-    'crítico': 'bg-status-critical/10 text-status-critical border-status-critical/30',
-  };
+const stageColors: Record<string, string> = {
+  'floracao': '#ec4899',
+  'frutificacao': '#f97316',
+  'crescimento': '#22c55e',
+  'maturacao': '#eab308',
+  'pronto_colheita': '#10b981',
+};
+
+const stageProgress: Record<string, number> = {
+  'floracao': 20,
+  'frutificacao': 40,
+  'crescimento': 60,
+  'maturacao': 80,
+  'pronto_colheita': 100,
+};
+
+const riskLabels: Record<string, string> = {
+  'baixo': 'Baixo',
+  'medio': 'Medio',
+  'alto': 'Alto',
+  'critico': 'Critico',
+};
+
+const riskColors: Record<string, string> = {
+  'baixo': 'bg-status-ok/10 text-status-ok border-status-ok/30',
+  'medio': 'bg-chart-temperature/10 text-chart-temperature border-chart-temperature/30',
+  'alto': 'bg-status-warning/10 text-status-warning border-status-warning/30',
+  'critico': 'bg-status-critical/10 text-status-critical border-status-critical/30',
+};
+
+export function PlotProductionCard({ plot, onClick, className }: PlotProductionCardProps) {
+  const stage = plot.productionStage || 'floracao';
+  const progress = stageProgress[stage] || 0;
+  const stageColor = stageColors[stage] || '#6b7280';
+  const stageLabel = stageLabels[stage] || stage;
 
   return (
     <div 
@@ -46,26 +71,28 @@ export function PlotProductionCard({ plot, onClick, className }: PlotProductionC
       )}
       onClick={onClick}
     >
-      {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2">
             <h4 className="font-semibold text-lg">{plot.plotName}</h4>
-            <Badge 
-              variant="outline"
-              className="text-xs"
-              style={{ 
-                borderColor: productionStageColors[plot.productionStage],
-                color: productionStageColors[plot.productionStage],
-              }}
-            >
-              {productionStageLabels[plot.productionStage]}
-            </Badge>
+            {plot.productionStage && (
+              <Badge 
+                variant="outline"
+                className="text-xs"
+                style={{ 
+                  borderColor: stageColor,
+                  color: stageColor,
+                }}
+              >
+                {stageLabel}
+              </Badge>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground">{plot.area} ha • {plot.treeCount} árvores</p>
+          {plot.plotCode && (
+            <p className="text-xs text-muted-foreground">{plot.plotCode}</p>
+          )}
         </div>
         
-        {/* Health Score */}
         <div className={cn(
           "w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm",
           plot.healthScore >= 70 ? "bg-status-ok/20 text-status-ok" :
@@ -76,113 +103,86 @@ export function PlotProductionCard({ plot, onClick, className }: PlotProductionC
         </div>
       </div>
 
-      {/* Stage Progress */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between text-xs mb-1">
-          <span className="text-muted-foreground">Progresso do Ciclo</span>
-          <span className="font-medium">{stageProgress}%</span>
+      {plot.productionStage && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className="text-muted-foreground">Progresso do Ciclo</span>
+            <span className="font-medium">{progress}%</span>
+          </div>
+          <Progress value={progress} className="h-2" />
         </div>
-        <Progress 
-          value={stageProgress} 
-          className="h-2"
-          style={{ 
-            // @ts-ignore
-            '--progress-color': productionStageColors[plot.productionStage] 
-          }}
-        />
-      </div>
+      )}
 
-      {/* Metrics Grid */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-              <Flower2 className="w-4 h-4 text-pink-500 flex-shrink-0" />
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground truncate">Flores/Árv</p>
-                <p className="font-semibold tabular-nums">{plot.flowersPerTree}</p>
-              </div>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            Total: {(plot.totalFlowers / 1000).toFixed(0)}k flores
-          </TooltipContent>
-        </Tooltip>
+        <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
+          <Apple className="w-4 h-4 text-orange-500 flex-shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Total Frutos</p>
+            <p className="font-semibold tabular-nums">{(plot.totalFruits / 1000).toFixed(1)}k</p>
+          </div>
+        </div>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-              <Apple className="w-4 h-4 text-orange-500 flex-shrink-0" />
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground truncate">Frutos/Árv</p>
-                <p className="font-semibold tabular-nums">{plot.fruitsPerTree}</p>
-              </div>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            Total: {(plot.totalFruits / 1000).toFixed(1)}k frutos
-          </TooltipContent>
-        </Tooltip>
+        <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
+          <TrendingUp className="w-4 h-4 text-primary flex-shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground truncate">Prod. Est.</p>
+            <p className="font-semibold tabular-nums">{plot.estimatedYieldTons.toFixed(1)}t</p>
+          </div>
+        </div>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-              <TrendingUp className="w-4 h-4 text-primary flex-shrink-0" />
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground truncate">Prod. Est.</p>
-                <p className="font-semibold tabular-nums">{plot.estimatedYieldTons.toFixed(1)}t</p>
-              </div>
+        {plot.avgFruitSize && (
+          <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
+            <Ruler className="w-4 h-4 text-blue-500 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground truncate">Tam. Medio</p>
+              <p className="font-semibold tabular-nums">{plot.avgFruitSize.toFixed(0)}mm</p>
             </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            {plot.estimatedYieldKg.toLocaleString('pt-BR')} kg
-          </TooltipContent>
-        </Tooltip>
+          </div>
+        )}
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-              <Ruler className="w-4 h-4 text-blue-500 flex-shrink-0" />
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground truncate">Calibre Médio</p>
-                <p className="font-semibold tabular-nums">{plot.avgFruitSize.toFixed(0)}g</p>
-              </div>
+        {plot.fruitCaliber && (
+          <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
+            <div className="w-4 h-4 rounded-full bg-primary/20 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground truncate">Calibre</p>
+              <p className="font-semibold text-sm capitalize">{plot.fruitCaliber.replace('_', ' ')}</p>
             </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            Classificação: {plot.fruitCaliber.replace('_', ' ')}
-          </TooltipContent>
-        </Tooltip>
+          </div>
+        )}
       </div>
 
-      {/* Harvest Info */}
-      <div className="flex items-center justify-between p-2 bg-primary/5 rounded-md mb-3">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-primary" />
-          <span className="text-sm">Colheita</span>
+      {plot.harvestStartDate && plot.harvestEndDate && (
+        <div className="flex items-center justify-between p-2 bg-primary/5 rounded-md mb-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-primary" />
+            <span className="text-sm">Colheita</span>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-medium">
+              {format(new Date(plot.harvestStartDate), 'dd MMM', { locale: ptBR })} - {format(new Date(plot.harvestEndDate), 'dd MMM', { locale: ptBR })}
+            </p>
+            {plot.daysToHarvest !== null && (
+              <p className="text-xs text-muted-foreground">
+                em {plot.daysToHarvest} dias
+              </p>
+            )}
+          </div>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-medium">
-            {format(plot.harvestStartDate, 'dd MMM', { locale: ptBR })} - {format(plot.harvestEndDate, 'dd MMM', { locale: ptBR })}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            em {plot.daysToHarvest} dias
-          </p>
-        </div>
-      </div>
+      )}
 
-      {/* Risk Indicator */}
-      {plot.riskLevel !== 'baixo' && (
+      {plot.riskLevel && plot.riskLevel !== 'baixo' && (
         <div className={cn(
           "flex items-center gap-2 p-2 rounded-md border",
-          riskColors[plot.riskLevel]
+          riskColors[plot.riskLevel] || riskColors['medio']
         )}>
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium">Risco {riskLevelLabels[plot.riskLevel]}</p>
-            <p className="text-xs opacity-80 truncate">
-              {plot.riskFactors.slice(0, 2).join(', ')}
-            </p>
+            <p className="text-xs font-medium">Risco {riskLabels[plot.riskLevel] || plot.riskLevel}</p>
+            {plot.riskFactors.length > 0 && (
+              <p className="text-xs opacity-80 truncate">
+                {plot.riskFactors.slice(0, 2).join(', ')}
+              </p>
+            )}
           </div>
         </div>
       )}

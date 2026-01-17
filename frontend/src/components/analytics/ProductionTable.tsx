@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { PlotProduction, productionStageLabels, caliberLabels, riskLevelLabels } from '@/data/analyticsData';
+import { PlotProduction } from '@/hooks/useAnalytics';
 import { 
   Table, 
   TableBody, 
@@ -27,9 +27,23 @@ interface ProductionTableProps {
   className?: string;
 }
 
-type SortField = 'plotName' | 'area' | 'treeCount' | 'productionStage' | 'healthScore' | 
-                 'flowersPerTree' | 'fruitsPerTree' | 'estimatedYieldKg' | 'daysToHarvest' | 'riskLevel';
+type SortField = 'plotName' | 'productionStage' | 'healthScore' | 'totalFruits' | 'estimatedYieldKg' | 'daysToHarvest' | 'riskLevel';
 type SortDirection = 'asc' | 'desc';
+
+const stageLabels: Record<string, string> = {
+  'floracao': 'Floracao',
+  'frutificacao': 'Frutificacao',
+  'crescimento': 'Crescimento',
+  'maturacao': 'Maturacao',
+  'pronto_colheita': 'Pronto Colheita',
+};
+
+const riskLabels: Record<string, string> = {
+  'baixo': 'Baixo',
+  'medio': 'Medio',
+  'alto': 'Alto',
+  'critico': 'Critico',
+};
 
 export function ProductionTable({ data, onRowClick, className }: ProductionTableProps) {
   const [sortField, setSortField] = useState<SortField>('plotName');
@@ -43,34 +57,25 @@ export function ProductionTable({ data, onRowClick, className }: ProductionTable
         case 'plotName':
           comparison = a.plotName.localeCompare(b.plotName);
           break;
-        case 'area':
-          comparison = a.area - b.area;
-          break;
-        case 'treeCount':
-          comparison = a.treeCount - b.treeCount;
-          break;
         case 'productionStage':
-          const stageOrder = ['floração', 'frutificação', 'crescimento', 'maturação', 'pronto_colheita'];
-          comparison = stageOrder.indexOf(a.productionStage) - stageOrder.indexOf(b.productionStage);
+          const stageOrder = ['floracao', 'frutificacao', 'crescimento', 'maturacao', 'pronto_colheita'];
+          comparison = stageOrder.indexOf(a.productionStage || '') - stageOrder.indexOf(b.productionStage || '');
           break;
         case 'healthScore':
           comparison = a.healthScore - b.healthScore;
           break;
-        case 'flowersPerTree':
-          comparison = a.flowersPerTree - b.flowersPerTree;
-          break;
-        case 'fruitsPerTree':
-          comparison = a.fruitsPerTree - b.fruitsPerTree;
+        case 'totalFruits':
+          comparison = a.totalFruits - b.totalFruits;
           break;
         case 'estimatedYieldKg':
           comparison = a.estimatedYieldKg - b.estimatedYieldKg;
           break;
         case 'daysToHarvest':
-          comparison = a.daysToHarvest - b.daysToHarvest;
+          comparison = (a.daysToHarvest ?? 999) - (b.daysToHarvest ?? 999);
           break;
         case 'riskLevel':
-          const riskOrder = ['baixo', 'médio', 'alto', 'crítico'];
-          comparison = riskOrder.indexOf(a.riskLevel) - riskOrder.indexOf(b.riskLevel);
+          const riskOrder = ['baixo', 'medio', 'alto', 'critico'];
+          comparison = riskOrder.indexOf(a.riskLevel || 'baixo') - riskOrder.indexOf(b.riskLevel || 'baixo');
           break;
       }
       
@@ -96,28 +101,19 @@ export function ProductionTable({ data, onRowClick, className }: ProductionTable
 
   const exportToCSV = () => {
     const headers = [
-      'Talhão', 'Área (ha)', 'Árvores', 'Estágio', 'Saúde (%)', 
-      'Flores/Árv', 'Frutos/Árv', 'Total Frutos', 'Calibre Médio (g)',
-      'Prod. Est. (kg)', 'Prod. Est. (t)', 'Início Colheita', 'Fim Colheita',
-      'Dias p/ Colheita', 'Risco'
+      'Talhao', 'Estagio', 'Saude (%)', 'Total Frutos',
+      'Prod. Est. (kg)', 'Prod. Est. (t)', 'Dias p/ Colheita', 'Risco'
     ];
     
     const rows = sortedData.map(p => [
       p.plotName,
-      p.area,
-      p.treeCount,
-      productionStageLabels[p.productionStage],
+      p.productionStage ? stageLabels[p.productionStage] || p.productionStage : '-',
       p.healthScore,
-      p.flowersPerTree,
-      p.fruitsPerTree,
       p.totalFruits,
-      p.avgFruitSize.toFixed(0),
       p.estimatedYieldKg,
       p.estimatedYieldTons.toFixed(2),
-      format(p.harvestStartDate, 'dd/MM/yyyy'),
-      format(p.harvestEndDate, 'dd/MM/yyyy'),
-      p.daysToHarvest,
-      riskLevelLabels[p.riskLevel]
+      p.daysToHarvest ?? '-',
+      p.riskLevel ? riskLabels[p.riskLevel] || p.riskLevel : '-'
     ]);
     
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
@@ -135,22 +131,21 @@ export function ProductionTable({ data, onRowClick, className }: ProductionTable
     return 'text-status-critical';
   };
 
-  const getRiskBadgeVariant = (risk: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+  const getRiskBadgeVariant = (risk: string | null): 'default' | 'secondary' | 'destructive' | 'outline' => {
     switch (risk) {
-      case 'crítico': return 'destructive';
+      case 'critico': return 'destructive';
       case 'alto': return 'destructive';
-      case 'médio': return 'secondary';
+      case 'medio': return 'secondary';
       default: return 'outline';
     }
   };
 
   return (
     <div className={cn("bg-card border border-border rounded-lg", className)}>
-      {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div>
-          <h3 className="font-semibold">Detalhamento por Talhão</h3>
-          <p className="text-xs text-muted-foreground">{data.length} talhões</p>
+          <h3 className="font-semibold">Detalhamento por Talhao</h3>
+          <p className="text-xs text-muted-foreground">{data.length} talhoes</p>
         </div>
         <Button variant="outline" size="sm" onClick={exportToCSV}>
           <Download className="w-4 h-4 mr-2" />
@@ -158,36 +153,17 @@ export function ProductionTable({ data, onRowClick, className }: ProductionTable
         </Button>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">
+              <TableHead className="w-[120px]">
                 <button 
                   className="flex items-center font-semibold hover:text-foreground transition-colors"
                   onClick={() => handleSort('plotName')}
                 >
-                  Talhão
+                  Talhao
                   <SortIcon field="plotName" />
-                </button>
-              </TableHead>
-              <TableHead>
-                <button 
-                  className="flex items-center font-semibold hover:text-foreground transition-colors"
-                  onClick={() => handleSort('area')}
-                >
-                  Área
-                  <SortIcon field="area" />
-                </button>
-              </TableHead>
-              <TableHead>
-                <button 
-                  className="flex items-center font-semibold hover:text-foreground transition-colors"
-                  onClick={() => handleSort('treeCount')}
-                >
-                  Árvores
-                  <SortIcon field="treeCount" />
                 </button>
               </TableHead>
               <TableHead>
@@ -195,7 +171,7 @@ export function ProductionTable({ data, onRowClick, className }: ProductionTable
                   className="flex items-center font-semibold hover:text-foreground transition-colors"
                   onClick={() => handleSort('productionStage')}
                 >
-                  Estágio
+                  Estagio
                   <SortIcon field="productionStage" />
                 </button>
               </TableHead>
@@ -204,26 +180,17 @@ export function ProductionTable({ data, onRowClick, className }: ProductionTable
                   className="flex items-center font-semibold hover:text-foreground transition-colors"
                   onClick={() => handleSort('healthScore')}
                 >
-                  Saúde
+                  Saude
                   <SortIcon field="healthScore" />
                 </button>
               </TableHead>
               <TableHead>
                 <button 
                   className="flex items-center font-semibold hover:text-foreground transition-colors"
-                  onClick={() => handleSort('flowersPerTree')}
+                  onClick={() => handleSort('totalFruits')}
                 >
-                  Flores/Árv
-                  <SortIcon field="flowersPerTree" />
-                </button>
-              </TableHead>
-              <TableHead>
-                <button 
-                  className="flex items-center font-semibold hover:text-foreground transition-colors"
-                  onClick={() => handleSort('fruitsPerTree')}
-                >
-                  Frutos/Árv
-                  <SortIcon field="fruitsPerTree" />
+                  Frutos
+                  <SortIcon field="totalFruits" />
                 </button>
               </TableHead>
               <TableHead>
@@ -264,33 +231,38 @@ export function ProductionTable({ data, onRowClick, className }: ProductionTable
                 onClick={() => onRowClick?.(plot)}
               >
                 <TableCell className="font-medium">{plot.plotName}</TableCell>
-                <TableCell>{plot.area} ha</TableCell>
-                <TableCell>{plot.treeCount.toLocaleString('pt-BR')}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="text-xs">
-                    {productionStageLabels[plot.productionStage]}
-                  </Badge>
+                  {plot.productionStage ? (
+                    <Badge variant="outline" className="text-xs">
+                      {stageLabels[plot.productionStage] || plot.productionStage}
+                    </Badge>
+                  ) : '-'}
                 </TableCell>
                 <TableCell className={cn("font-medium", getHealthColor(plot.healthScore))}>
                   {plot.healthScore}%
                 </TableCell>
-                <TableCell>{plot.flowersPerTree}</TableCell>
-                <TableCell>{plot.fruitsPerTree}</TableCell>
+                <TableCell>{plot.totalFruits.toLocaleString('pt-BR')}</TableCell>
                 <TableCell className="font-medium">
                   {plot.estimatedYieldTons.toFixed(1)}t
                 </TableCell>
                 <TableCell>
-                  <div>
-                    <span className="font-medium">{plot.daysToHarvest}d</span>
-                    <p className="text-xs text-muted-foreground">
-                      {format(plot.harvestStartDate, 'dd/MM', { locale: ptBR })}
-                    </p>
-                  </div>
+                  {plot.daysToHarvest !== null ? (
+                    <div>
+                      <span className="font-medium">{plot.daysToHarvest}d</span>
+                      {plot.harvestStartDate && (
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(plot.harvestStartDate), 'dd/MM', { locale: ptBR })}
+                        </p>
+                      )}
+                    </div>
+                  ) : '-'}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={getRiskBadgeVariant(plot.riskLevel)}>
-                    {riskLevelLabels[plot.riskLevel]}
-                  </Badge>
+                  {plot.riskLevel ? (
+                    <Badge variant={getRiskBadgeVariant(plot.riskLevel)}>
+                      {riskLabels[plot.riskLevel] || plot.riskLevel}
+                    </Badge>
+                  ) : '-'}
                 </TableCell>
                 <TableCell>
                   <Button variant="ghost" size="icon" className="h-8 w-8">

@@ -1,5 +1,6 @@
 """Rotas de administração do sistema (superuser only)."""
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -7,12 +8,15 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import CurrentSuperuser
 from app.database import get_db
+from app.models.farm import Farm, Plot
+from app.models.sensor import Sensor, SensorType
 from app.schemas.organization import (
     OrganizationCreate,
     OrganizationResponse,
     OrganizationUpdate,
     OrganizationWithOwner,
 )
+from app.schemas.sensor import SensorCreate, SensorResponse, SensorUpdate
 from app.schemas.sensor_type import (
     SensorTypeCreate,
     SensorTypeResponse,
@@ -50,6 +54,8 @@ async def list_organizations(
         if owner:
             org_data.owner_id = owner.id
             org_data.owner_email = owner.email
+            org_data.owner_first_name = owner.first_name
+            org_data.owner_last_name = owner.last_name
         result.append(org_data)
 
     return result
@@ -90,6 +96,8 @@ async def create_organization(
     result = OrganizationWithOwner.model_validate(organization)
     result.owner_id = owner.id
     result.owner_email = owner.email
+    result.owner_first_name = owner.first_name
+    result.owner_last_name = owner.last_name
 
     return result
 
@@ -115,18 +123,20 @@ async def get_organization(
     if owner:
         result.owner_id = owner.id
         result.owner_email = owner.email
+        result.owner_first_name = owner.first_name
+        result.owner_last_name = owner.last_name
 
     return result
 
 
-@router.patch("/organizations/{org_id}", response_model=OrganizationResponse)
+@router.patch("/organizations/{org_id}", response_model=OrganizationWithOwner)
 async def update_organization(
     org_id: UUID,
     org_data: OrganizationUpdate,
     current_user: CurrentSuperuser,
     db: Session = Depends(get_db),
 ):
-    """Atualiza uma organização."""
+    """Atualiza uma organização e dados do owner."""
     org_service = OrganizationService(db)
     organization = org_service.get_by_id(org_id)
 
@@ -136,7 +146,17 @@ async def update_organization(
             detail="Organização não encontrada",
         )
 
-    return org_service.update(organization, org_data)
+    updated_org = org_service.update(organization, org_data)
+    
+    owner = org_service.get_owner(updated_org)
+    result = OrganizationWithOwner.model_validate(updated_org)
+    if owner:
+        result.owner_id = owner.id
+        result.owner_email = owner.email
+        result.owner_first_name = owner.first_name
+        result.owner_last_name = owner.last_name
+    
+    return result
 
 
 @router.delete("/organizations/{org_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -253,6 +273,208 @@ async def delete_sensor_type(
         )
 
     sensor_type_service.delete(sensor_type)
+
+
+# ==================== Sensores ====================
+
+
+@router.get("/sensors", response_model=list[SensorResponse])
+async def list_all_sensors(
+    current_user: CurrentSuperuser,
+    db: Session = Depends(get_db),
+    organization_id: UUID | None = None,
+    farm_id: UUID | None = None,
+):
+    """Lista sensores de todas organizacoes ou filtrado por organizacao/fazenda.
+
+    Apenas superusers podem acessar.
+    """
+    query = db.query(Sensor).filter(Sensor.deleted_at.is_(None))
+
+    if organization_id:
+        query = query.filter(Sensor.organization_id == organization_id)
+    if farm_id:
+        query = query.filter(Sensor.farm_id == farm_id)
+
+    return query.all()
+
+
+@router.post("/sensors", response_model=SensorResponse, status_code=status.HTTP_201_CREATED)
+async def create_sensor(
+    sensor_data: SensorCreate,
+    current_user: CurrentSuperuser,
+    db: Session = Depends(get_db),
+    organization_id: UUID | None = None,
+):
+    """Cria um novo sensor para uma organizacao.
+
+    Apenas superusers podem criar sensores.
+    O organization_id pode ser passado como query param ou inferido da farm_id.
+    """
+    if not organization_id and not sensor_data.farm_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="organization_id ou farm_id e obrigatorio",
+        )
+
+    if not organization_id and sensor_data.farm_id:
+        farm = db.query(Farm).filter(Farm.id == sensor_data.farm_id).first()
+        if farm:
+            organization_id = farm.organization_id
+
+    org_service = OrganizationService(db)
+    organization = org_service.get_by_id(organization_id)
+
+    if not organization:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organizacao nao encontrada",
+        )
+
+    if sensor_data.farm_id:
+        farm = db.query(Farm).filter(
+            Farm.id == sensor_data.farm_id,
+            Farm.organization_id == organization_id,
+        ).first()
+        if not farm:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Fazenda nao encontrada ou nao pertence a organizacao",
+            )
+
+    if sensor_data.plot_id:
+        plot = db.query(Plot).filter(Plot.id == sensor_data.plot_id).first()
+        if not plot:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Talhao nao encontrado",
+            )
+
+    sensor_type = db.query(SensorType).filter(
+        SensorType.id == sensor_data.sensor_type_id
+    ).first()
+    if not sensor_type:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tipo de sensor nao encontrado",
+        )
+
+    if sensor_data.dev_eui:
+        existing = db.query(Sensor).filter(
+            Sensor.dev_eui == sensor_data.dev_eui,
+            Sensor.deleted_at.is_(None),
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ja existe um sensor com este DevEUI",
+            )
+
+    sensor = Sensor(
+        organization_id=organization_id,
+        farm_id=sensor_data.farm_id,
+        plot_id=sensor_data.plot_id,
+        sensor_type_id=sensor_data.sensor_type_id,
+        name=sensor_data.name,
+        dev_eui=sensor_data.dev_eui,
+        serial_number=sensor_data.serial_number,
+        mac_address=sensor_data.mac_address,
+        location=sensor_data.location,
+        installation_date=sensor_data.installation_date,
+        firmware_version=sensor_data.firmware_version,
+        configuration=sensor_data.configuration,
+        created_by=current_user.id,
+    )
+
+    db.add(sensor)
+    db.commit()
+    db.refresh(sensor)
+
+    return sensor
+
+
+@router.get("/sensors/{sensor_id}", response_model=SensorResponse)
+async def get_sensor(
+    sensor_id: UUID,
+    current_user: CurrentSuperuser,
+    db: Session = Depends(get_db),
+):
+    """Obtem detalhes de um sensor."""
+    sensor = db.query(Sensor).filter(
+        Sensor.id == sensor_id,
+        Sensor.deleted_at.is_(None),
+    ).first()
+
+    if not sensor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Sensor nao encontrado",
+        )
+
+    return sensor
+
+
+@router.patch("/sensors/{sensor_id}", response_model=SensorResponse)
+async def update_sensor(
+    sensor_id: UUID,
+    sensor_data: SensorUpdate,
+    current_user: CurrentSuperuser,
+    db: Session = Depends(get_db),
+):
+    """Atualiza um sensor."""
+    sensor = db.query(Sensor).filter(
+        Sensor.id == sensor_id,
+        Sensor.deleted_at.is_(None),
+    ).first()
+
+    if not sensor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Sensor nao encontrado",
+        )
+
+    if sensor_data.dev_eui and sensor_data.dev_eui != sensor.dev_eui:
+        existing = db.query(Sensor).filter(
+            Sensor.dev_eui == sensor_data.dev_eui,
+            Sensor.deleted_at.is_(None),
+            Sensor.id != sensor_id,
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ja existe um sensor com este DevEUI",
+            )
+
+    update_data = sensor_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(sensor, field, value)
+
+    db.commit()
+    db.refresh(sensor)
+
+    return sensor
+
+
+@router.delete("/sensors/{sensor_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_sensor(
+    sensor_id: UUID,
+    current_user: CurrentSuperuser,
+    db: Session = Depends(get_db),
+):
+    """Remove um sensor (soft delete)."""
+    sensor = db.query(Sensor).filter(
+        Sensor.id == sensor_id,
+        Sensor.deleted_at.is_(None),
+    ).first()
+
+    if not sensor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Sensor nao encontrado",
+        )
+
+    sensor.deleted_at = datetime.now(timezone.utc)
+    db.commit()
 
 
 # ==================== Super Users ====================

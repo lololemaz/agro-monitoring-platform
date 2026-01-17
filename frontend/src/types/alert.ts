@@ -69,4 +69,5 @@ export interface AlertFilters {
   severity?: AlertSeverity;
   resolved?: boolean;
   acknowledged?: boolean;
+  limit?: number;
 }

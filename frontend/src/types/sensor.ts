@@ -53,6 +53,7 @@ export interface Sensor {
   plot_id: string | null;
   sensor_type_id: string;
   name: string;
+  dev_eui: string | null;
   serial_number: string | null;
   mac_address: string | null;
   api_key: string | null;

@@ -5,11 +5,49 @@ import type {
   OrganizationUpdate 
 } from '@/types/organization';
 import type { 
+  Sensor,
   SensorType, 
   SensorTypeCreate, 
   SensorTypeUpdate 
 } from '@/types/sensor';
 import type { User } from '@/types/auth';
+
+export interface AdminSensorCreate {
+  farm_id?: string;
+  plot_id?: string;
+  sensor_type_id: string;
+  name: string;
+  dev_eui?: string;
+  serial_number?: string;
+  mac_address?: string;
+  location?: {
+    lat?: number;
+    lng?: number;
+    description?: string;
+  };
+  installation_date?: string;
+  firmware_version?: string;
+  configuration?: Record<string, unknown>;
+}
+
+export interface AdminSensorUpdate {
+  farm_id?: string;
+  plot_id?: string;
+  sensor_type_id?: string;
+  name?: string;
+  dev_eui?: string;
+  serial_number?: string;
+  mac_address?: string;
+  location?: {
+    lat?: number;
+    lng?: number;
+    description?: string;
+  };
+  installation_date?: string;
+  firmware_version?: string;
+  configuration?: Record<string, unknown>;
+  is_active?: boolean;
+}
 
 /**
  * Admin service - handles superuser operations
@@ -102,6 +140,56 @@ export const adminService = {
    */
   async deleteSensorType(id: string): Promise<void> {
     await api.delete(`/admin/sensor-types/${id}`);
+  },
+
+  // ==========================================
+  // Sensors (Admin only)
+  // ==========================================
+
+  /**
+   * Get all sensors for an organization
+   */
+  async getSensors(organizationId?: string, farmId?: string): Promise<Sensor[]> {
+    const response = await api.get<Sensor[]>('/admin/sensors', {
+      params: {
+        organization_id: organizationId,
+        farm_id: farmId,
+      },
+    });
+    return response.data;
+  },
+
+  /**
+   * Get sensor by ID
+   */
+  async getSensor(id: string): Promise<Sensor> {
+    const response = await api.get<Sensor>(`/admin/sensors/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Create new sensor
+   */
+  async createSensor(organizationId: string, data: AdminSensorCreate): Promise<Sensor> {
+    const response = await api.post<Sensor>('/admin/sensors', data, {
+      params: { organization_id: organizationId },
+    });
+    return response.data;
+  },
+
+  /**
+   * Update sensor
+   */
+  async updateSensor(id: string, data: AdminSensorUpdate): Promise<Sensor> {
+    const response = await api.patch<Sensor>(`/admin/sensors/${id}`, data);
+    return response.data;
+  },
+
+  /**
+   * Delete sensor (soft delete)
+   */
+  async deleteSensor(id: string): Promise<void> {
+    await api.delete(`/admin/sensors/${id}`);
   },
 
   // ==========================================

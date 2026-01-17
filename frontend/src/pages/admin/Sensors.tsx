@@ -58,8 +58,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { adminService } from '@/services/adminService';
-import { sensorsService, type SensorCreate, type SensorUpdate } from '@/services/sensorsService';
+import { adminService, type AdminSensorCreate, type AdminSensorUpdate } from '@/services/adminService';
 import { farmsService } from '@/services/farmsService';
 import { plotsService } from '@/services/plotsService';
 import { getErrorMessage } from '@/services/api';
@@ -200,11 +199,11 @@ export default function Sensors() {
     
     setIsLoadingSensors(true);
     try {
-      const data = await sensorsService.getSensors({
-        farm_id: selectedFarmId || undefined,
-      });
-      // Filter by org
-      setSensors(data.filter(s => s.organization_id === selectedOrgId));
+      const data = await adminService.getSensors(
+        selectedOrgId,
+        selectedFarmId || undefined,
+      );
+      setSensors(data);
     } catch (error) {
       toast.error(getErrorMessage(error));
       setSensors([]);
@@ -255,7 +254,7 @@ export default function Sensors() {
       return;
     }
 
-    const payload: SensorCreate = {
+    const payload: AdminSensorCreate = {
       name: formData.name.trim(),
       sensor_type_id: formData.sensor_type_id,
       farm_id: formData.farm_id || undefined,
@@ -270,7 +269,7 @@ export default function Sensors() {
 
     setIsSaving(true);
     try {
-      await sensorsService.createSensor(payload);
+      await adminService.createSensor(selectedOrgId, payload);
       toast.success('Sensor criado com sucesso');
       setIsCreateOpen(false);
       resetForm();
@@ -291,7 +290,7 @@ export default function Sensors() {
       return;
     }
 
-    const payload: SensorUpdate = {
+    const payload: AdminSensorUpdate = {
       name: formData.name.trim(),
       sensor_type_id: formData.sensor_type_id,
       farm_id: formData.farm_id || undefined,
@@ -306,7 +305,7 @@ export default function Sensors() {
 
     setIsSaving(true);
     try {
-      await sensorsService.updateSensor(selectedSensor.id, payload);
+      await adminService.updateSensor(selectedSensor.id, payload);
       toast.success('Sensor atualizado com sucesso');
       setIsEditOpen(false);
       resetForm();
@@ -324,7 +323,7 @@ export default function Sensors() {
 
     setIsSaving(true);
     try {
-      await sensorsService.deleteSensor(selectedSensor.id);
+      await adminService.deleteSensor(selectedSensor.id);
       toast.success('Sensor removido com sucesso');
       setIsDeleteOpen(false);
       setSelectedSensor(null);

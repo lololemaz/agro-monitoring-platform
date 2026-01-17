@@ -67,10 +67,26 @@ class OrganizationService:
         return organization, owner
 
     def update(self, organization: Organization, org_data: OrganizationUpdate) -> Organization:
-        """Atualiza dados da organização."""
+        """Atualiza dados da organização e owner."""
         update_data = org_data.model_dump(exclude_unset=True)
-        for field, value in update_data.items():
+        
+        owner_fields = ['owner_first_name', 'owner_last_name', 'owner_password']
+        owner_updates = {k: v for k, v in update_data.items() if k in owner_fields}
+        org_updates = {k: v for k, v in update_data.items() if k not in owner_fields}
+        
+        for field, value in org_updates.items():
             setattr(organization, field, value)
+        
+        if owner_updates:
+            owner = self.get_owner(organization)
+            if owner:
+                if 'owner_first_name' in owner_updates:
+                    owner.first_name = owner_updates['owner_first_name']
+                if 'owner_last_name' in owner_updates:
+                    owner.last_name = owner_updates['owner_last_name']
+                if 'owner_password' in owner_updates and owner_updates['owner_password']:
+                    owner.password_hash = get_password_hash(owner_updates['owner_password'])
+        
         self.db.commit()
         self.db.refresh(organization)
         return organization

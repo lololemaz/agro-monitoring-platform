@@ -75,18 +75,24 @@ export interface AnalyticsFilters {
 }
 
 export interface FarmSummary {
+  farm_id: string;
+  farm_name: string;
+  total_area: number | null;
   total_plots: number;
-  ok_count: number;
-  warning_count: number;
-  critical_count: number;
-  offline_count: number;
-  avg_health_score: number;
-  total_estimated_yield_kg: number;
   total_trees: number;
+  total_sensors: number;
+  sensors_online: number;
+  sensors_offline: number;
+  plots_ok: number;
+  plots_warning: number;
+  plots_critical: number;
+  plots_offline: number;
   active_alerts: number;
-  avg_moisture: number;
-  avg_temperature: number;
-  avg_ph: number;
-  irrigation_issues: number;
-  pest_detections: number;
+  critical_alerts: number;
+  warning_alerts: number;
+  avg_moisture: number | null;
+  avg_temperature: number | null;
+  avg_ph: number | null;
+  health_score: number;
+  estimated_yield_kg: number;
 }

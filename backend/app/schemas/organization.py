@@ -59,3 +59,5 @@ class OrganizationWithOwner(OrganizationResponse):
 
     owner_id: UUID | None = None
     owner_email: str | None = None
+    owner_first_name: str | None = None
+    owner_last_name: str | None = None

@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import admin, alerts, analytics, auth, events, farms, plots, sensors, users
+from app.routers import admin, alerts, analytics, auth, events, farms, plots, roles, sensors, users
 
 app = FastAPI(
     title="Mango Farm Monitor API",
@@ -30,6 +30,9 @@ app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
 # Rotas de gestão de usuários
 app.include_router(users.router, prefix="/api/users", tags=["users"])
+
+# Rotas de cargos/roles
+app.include_router(roles.router, prefix="/api/roles", tags=["roles"])
 
 # Rotas protegidas (requerem autenticação)
 app.include_router(farms.router, prefix="/api/farms", tags=["farms"])

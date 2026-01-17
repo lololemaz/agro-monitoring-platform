@@ -13,6 +13,7 @@ export interface SensorCreate {
   plot_id?: string;
   sensor_type_id: string;
   name: string;
+  dev_eui?: string;
   serial_number?: string;
   mac_address?: string;
   location?: {
@@ -30,6 +31,7 @@ export interface SensorUpdate {
   plot_id?: string;
   sensor_type_id?: string;
   name?: string;
+  dev_eui?: string;
   serial_number?: string;
   mac_address?: string;
   location?: {
@@ -54,6 +56,35 @@ export interface SensorHealthIssue {
   signal_strength: number | null;
   is_online: boolean;
   issue: 'offline' | 'low_battery' | 'weak_signal';
+}
+
+export interface SensorHeatmapData {
+  sensor_id: string;
+  sensor_name: string;
+  plot_id: string | null;
+  plot_name: string | null;
+  location: {
+    lat?: number;
+    lng?: number;
+    description?: string;
+    x?: number;
+    y?: number;
+  } | null;
+  is_online: boolean;
+  last_signal_at: string | null;
+  metrics: {
+    soilMoisture?: number;
+    temperature?: number;
+    electricalConductivity?: number;
+    ph?: number;
+    nitrogen?: number;
+    potassium?: number;
+    phosphorus?: number;
+    chlorophyllIndex?: number;
+    mangoCount?: number;
+    limeApplication?: number;
+  };
+  is_critical: boolean;
 }
 
 /**
@@ -113,8 +144,17 @@ export const sensorsService = {
    * Get available sensor types
    */
   async getSensorTypes(): Promise<SensorType[]> {
-    // This might be from admin endpoint or a public one
-    const response = await api.get<SensorType[]>('/sensor-types/');
+    const response = await api.get<SensorType[]>('/sensors/types');
+    return response.data;
+  },
+
+  /**
+   * Get heatmap data for sensors with latest readings
+   */
+  async getHeatmapData(farmId?: string): Promise<SensorHeatmapData[]> {
+    const response = await api.get<SensorHeatmapData[]>('/sensors/heatmap-data', {
+      params: { farm_id: farmId },
+    });
     return response.data;
   },
 };

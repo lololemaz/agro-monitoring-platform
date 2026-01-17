@@ -15,6 +15,10 @@ export interface Organization {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  owner_id: string | null;
+  owner_email: string | null;
+  owner_first_name: string | null;
+  owner_last_name: string | null;
 }
 
 export interface OrganizationCreate {
