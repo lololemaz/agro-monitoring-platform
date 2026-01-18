@@ -754,3 +754,211 @@ async def create_snapshot(
         plot_name=plot.name,
         plot_code=plot.code,
     )
+
+
+@router.post("/generate", response_model=list[SnapshotResponse])
+async def generate_snapshots_from_sensors(
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+    farm_id: UUID | None = None,
+):
+    """Gera ou atualiza snapshots baseado nos dados de sensores.
+    
+    Este endpoint analisa os dados de soil_readings e vision_data
+    para criar ou atualizar snapshots de producao para cada talhao.
+    Se ja existir um snapshot para hoje, ele sera atualizado com os dados mais recentes.
+    """
+    from decimal import Decimal
+    
+    plots_query = get_user_plots_query(db, current_user)
+    
+    if farm_id:
+        plots_query = plots_query.filter(Plot.farm_id == farm_id)
+    
+    plots = plots_query.all()
+    today = date.today()
+    created_snapshots = []
+    
+    for plot_item in plots:
+        # Verificar se ja existe snapshot para hoje
+        existing = (
+            db.query(PlotProductionSnapshot)
+            .filter(
+                PlotProductionSnapshot.plot_id == plot_item.id,
+                PlotProductionSnapshot.snapshot_date == today,
+            )
+            .first()
+        )
+        
+        # Buscar ultima leitura de solo
+        last_soil = (
+            db.query(SoilReading)
+            .filter(SoilReading.plot_id == plot_item.id)
+            .order_by(SoilReading.time.desc())
+            .first()
+        )
+        
+        # Buscar ultima leitura de visao
+        last_vision = (
+            db.query(VisionData)
+            .filter(VisionData.plot_id == plot_item.id)
+            .order_by(VisionData.time.desc())
+            .first()
+        )
+        
+        # Calcular health score baseado nas leituras
+        health_score = Decimal("70")  # Base
+        risk_factors = []
+        plot_status = "ok"
+        
+        if last_soil:
+            # Ajustar health score baseado em umidade
+            moisture = float(last_soil.moisture or 0)
+            if moisture < 15:
+                health_score -= Decimal("15")
+                risk_factors.append("Umidade do solo baixa")
+                plot_status = "warning"
+            elif moisture > 35:
+                health_score -= Decimal("10")
+                risk_factors.append("Umidade do solo alta")
+            
+            # Ajustar baseado em pH
+            ph = float(last_soil.ph or 6.5)
+            if ph < 5.5 or ph > 7.5:
+                health_score -= Decimal("10")
+                risk_factors.append("pH fora da faixa ideal")
+                if plot_status == "ok":
+                    plot_status = "warning"
+            
+            # Ajustar baseado em temperatura
+            temp = float(last_soil.temperature or 25)
+            if temp > 35:
+                health_score -= Decimal("15")
+                risk_factors.append("Temperatura elevada")
+                plot_status = "critical"
+            elif temp < 15:
+                health_score -= Decimal("10")
+                risk_factors.append("Temperatura baixa")
+        
+        # Dados de visao
+        total_fruits = 0
+        avg_fruit_size = None
+        flowering_percentage = None
+        
+        if last_vision:
+            total_fruits = last_vision.fruit_count or 0
+            avg_fruit_size = last_vision.avg_fruit_size
+            flowering_percentage = last_vision.flowering_percentage
+            
+            # Ajustar health score baseado em estresse hidrico
+            water_stress = float(last_vision.water_stress_level or 0)
+            if water_stress > 60:
+                health_score -= Decimal("20")
+                risk_factors.append("Estresse hidrico alto")
+                plot_status = "critical"
+            elif water_stress > 40:
+                health_score -= Decimal("10")
+                risk_factors.append("Estresse hidrico moderado")
+                if plot_status == "ok":
+                    plot_status = "warning"
+        
+        # Garantir que health_score esta entre 0 e 100
+        health_score = max(Decimal("0"), min(Decimal("100"), health_score))
+        
+        # Determinar risk level
+        risk_level = "baixo"
+        if len(risk_factors) >= 3 or plot_status == "critical":
+            risk_level = "critico"
+        elif len(risk_factors) >= 2:
+            risk_level = "alto"
+        elif len(risk_factors) >= 1:
+            risk_level = "medio"
+        
+        # Estimar producao (simplificado)
+        tree_count = plot_item.tree_count or 100
+        fruits_per_tree = total_fruits / tree_count if tree_count > 0 else 0
+        avg_weight_kg = 0.35  # Peso medio de uma manga em kg
+        estimated_yield_kg = Decimal(str(total_fruits * avg_weight_kg))
+        estimated_yield_tons = estimated_yield_kg / 1000
+        
+        # Determinar estagio de producao
+        production_stage = "vegetativo"
+        if flowering_percentage and float(flowering_percentage) > 50:
+            production_stage = "floracao"
+        elif total_fruits > tree_count * 5:
+            production_stage = "frutificacao"
+        elif total_fruits > tree_count * 20:
+            production_stage = "maturacao"
+        
+        if existing:
+            # Atualizar snapshot existente
+            existing.status = plot_status
+            existing.health_score = health_score
+            existing.production_stage = production_stage
+            existing.fruits_per_tree = Decimal(str(fruits_per_tree)) if fruits_per_tree else None
+            existing.total_fruits = total_fruits
+            existing.avg_fruit_size = avg_fruit_size
+            existing.estimated_yield_kg = estimated_yield_kg
+            existing.estimated_yield_tons = estimated_yield_tons
+            existing.flowering_percentage = flowering_percentage
+            existing.risk_level = risk_level
+            existing.risk_factors = risk_factors
+            created_snapshots.append((existing, plot_item))
+        else:
+            # Criar novo snapshot
+            new_snapshot = PlotProductionSnapshot(
+                plot_id=plot_item.id,
+                snapshot_date=today,
+                status=plot_status,
+                health_score=health_score,
+                production_stage=production_stage,
+                fruits_per_tree=Decimal(str(fruits_per_tree)) if fruits_per_tree else None,
+                total_fruits=total_fruits,
+                avg_fruit_size=avg_fruit_size,
+                estimated_yield_kg=estimated_yield_kg,
+                estimated_yield_tons=estimated_yield_tons,
+                flowering_percentage=flowering_percentage,
+                risk_level=risk_level,
+                risk_factors=risk_factors,
+            )
+            db.add(new_snapshot)
+            created_snapshots.append((new_snapshot, plot_item))
+    
+    db.commit()
+    
+    # Preparar resposta
+    result = []
+    for snap, p in created_snapshots:
+        db.refresh(snap)
+        result.append(
+            SnapshotResponse(
+                id=snap.id,
+                plot_id=snap.plot_id,
+                snapshot_date=snap.snapshot_date,
+                status=snap.status,
+                health_score=snap.health_score,
+                production_stage=snap.production_stage,
+                flowers_per_tree=snap.flowers_per_tree,
+                total_flowers=snap.total_flowers,
+                flowering_percentage=snap.flowering_percentage,
+                fruits_per_tree=snap.fruits_per_tree,
+                total_fruits=snap.total_fruits,
+                avg_fruit_size=snap.avg_fruit_size,
+                fruit_caliber=snap.fruit_caliber,
+                estimated_yield_kg=snap.estimated_yield_kg,
+                estimated_yield_tons=snap.estimated_yield_tons,
+                harvest_start_date=snap.harvest_start_date,
+                harvest_end_date=snap.harvest_end_date,
+                days_to_harvest=snap.days_to_harvest,
+                risk_level=snap.risk_level,
+                risk_factors=snap.risk_factors or [],
+                extra_data=snap.extra_data or {},
+                last_soil_reading_id=snap.last_soil_reading_id,
+                last_vision_data_id=snap.last_vision_data_id,
+                created_at=snap.created_at,
+                plot_name=p.name,
+                plot_code=p.code,
+            )
+        )
+    
+    return result

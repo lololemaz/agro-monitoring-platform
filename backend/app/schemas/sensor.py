@@ -38,8 +38,8 @@ class SensorResponse(BaseModel):
 class SensorCreate(BaseModel):
     """Schema para criacao de sensor."""
 
-    farm_id: UUID | None = None
-    plot_id: UUID | None = None
+    farm_id: UUID
+    plot_id: UUID
     sensor_type_id: UUID
     name: str
     dev_eui: str | None = None

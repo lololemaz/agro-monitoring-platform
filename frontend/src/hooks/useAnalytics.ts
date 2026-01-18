@@ -67,7 +67,7 @@ export function useAnalytics(farmId: string | null): UseAnalyticsResult {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (forceGenerate = false) => {
     if (!farmId) {
       setSnapshots([]);
       setFarmSummary(null);
@@ -79,10 +79,22 @@ export function useAnalytics(farmId: string | null): UseAnalyticsResult {
     setError(null);
 
     try {
-      const [latestSnapshots, summary] = await Promise.all([
-        analyticsService.getLatestSnapshots(farmId),
-        analyticsService.getFarmSummary(farmId),
-      ]);
+      let latestSnapshots = await analyticsService.getLatestSnapshots(farmId);
+      
+      // Gerar snapshots se estiver vazio ou se forceGenerate for true
+      if (latestSnapshots.length === 0 || forceGenerate) {
+        try {
+          const generated = await analyticsService.generateSnapshots(farmId);
+          if (generated.length > 0) {
+            // Se gerou novos, buscar todos os snapshots atualizados
+            latestSnapshots = await analyticsService.getLatestSnapshots(farmId);
+          }
+        } catch {
+          // Ignorar erro na geracao - pode nao ter dados de sensores
+        }
+      }
+      
+      const summary = await analyticsService.getFarmSummary(farmId);
 
       setSnapshots(latestSnapshots);
       setFarmSummary(summary);
@@ -94,7 +106,11 @@ export function useAnalytics(farmId: string | null): UseAnalyticsResult {
   }, [farmId]);
 
   useEffect(() => {
-    loadData();
+    loadData(false);
+  }, [loadData]);
+
+  const refresh = useCallback(async () => {
+    await loadData(true); // Forca geracao de novos snapshots
   }, [loadData]);
 
   const plotProductions: PlotProduction[] = snapshots.map(snapshot => ({
@@ -171,6 +187,6 @@ export function useAnalytics(farmId: string | null): UseAnalyticsResult {
     farmSummary,
     isLoading,
     error,
-    refresh: loadData,
+    refresh,
   };
 }

@@ -55,8 +55,8 @@ export function PlotCard({ plot, onClick, className }: PlotCardProps) {
           <Droplets className="w-4 h-4 text-chart-moisture" />
           <div>
             <p className="text-sm font-medium tabular-nums">
-              {soil?.moisture !== null && soil?.moisture !== undefined
-                ? `${soil.moisture.toFixed(1)}%`
+              {soil?.moisture != null
+                ? `${Number(soil.moisture).toFixed(1)}%`
                 : 'N/A'}
             </p>
             <p className="text-[10px] text-muted-foreground">Umidade</p>
@@ -67,8 +67,8 @@ export function PlotCard({ plot, onClick, className }: PlotCardProps) {
           <Thermometer className="w-4 h-4 text-chart-temperature" />
           <div>
             <p className="text-sm font-medium tabular-nums">
-              {soil?.temperature !== null && soil?.temperature !== undefined
-                ? `${soil.temperature.toFixed(1)}°C`
+              {soil?.temperature != null
+                ? `${Number(soil.temperature).toFixed(1)}°C`
                 : 'N/A'}
             </p>
             <p className="text-[10px] text-muted-foreground">Temp</p>
@@ -79,8 +79,8 @@ export function PlotCard({ plot, onClick, className }: PlotCardProps) {
           <Activity className="w-4 h-4 text-chart-health" />
           <div>
             <p className="text-sm font-medium tabular-nums">
-              {vision?.ndvi !== null && vision?.ndvi !== undefined
-                ? vision.ndvi.toFixed(2)
+              {vision?.ndvi != null
+                ? Number(vision.ndvi).toFixed(2)
                 : 'N/A'}
             </p>
             <p className="text-[10px] text-muted-foreground">NDVI</p>

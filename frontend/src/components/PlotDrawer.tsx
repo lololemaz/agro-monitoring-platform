@@ -90,48 +90,48 @@ export function PlotDrawer({ plot, open, onOpenChange }: PlotDrawerProps) {
               icon={Droplets}
               iconColor="text-chart-moisture"
               label="Umidade"
-              value={soil?.moisture !== null && soil?.moisture !== undefined
-                ? `${soil.moisture.toFixed(1)}%`
+              value={soil?.moisture != null
+                ? `${Number(soil.moisture).toFixed(1)}%`
                 : 'N/A'}
             />
             <MetricCard
               icon={Thermometer}
               iconColor="text-chart-temperature"
               label="Temperatura"
-              value={soil?.temperature !== null && soil?.temperature !== undefined
-                ? `${soil.temperature.toFixed(1)}°C`
+              value={soil?.temperature != null
+                ? `${Number(soil.temperature).toFixed(1)}°C`
                 : 'N/A'}
             />
             <MetricCard
               icon={Zap}
               iconColor="text-chart-ec"
               label="CE"
-              value={soil?.ec !== null && soil?.ec !== undefined
-                ? `${soil.ec.toFixed(2)} mS/cm`
+              value={soil?.ec != null
+                ? `${Number(soil.ec).toFixed(2)} mS/cm`
                 : 'N/A'}
             />
             <MetricCard
               icon={Target}
               iconColor="text-chart-ph"
               label="pH"
-              value={soil?.ph !== null && soil?.ph !== undefined
-                ? soil.ph.toFixed(1)
+              value={soil?.ph != null
+                ? Number(soil.ph).toFixed(1)
                 : 'N/A'}
             />
             <MetricCard
               icon={Activity}
               iconColor="text-chart-health"
               label="NDVI"
-              value={vision?.ndvi !== null && vision?.ndvi !== undefined
-                ? vision.ndvi.toFixed(2)
+              value={vision?.ndvi != null
+                ? Number(vision.ndvi).toFixed(2)
                 : 'N/A'}
             />
             <MetricCard
               icon={Leaf}
               iconColor="text-chart-nitrogen"
               label="Clorofila"
-              value={vision?.chlorophyll_level !== null && vision?.chlorophyll_level !== undefined
-                ? `${vision.chlorophyll_level.toFixed(0)}%`
+              value={vision?.chlorophyll_level != null
+                ? `${Number(vision.chlorophyll_level).toFixed(0)}%`
                 : 'N/A'}
             />
           </div>
@@ -151,8 +151,8 @@ export function PlotDrawer({ plot, open, onOpenChange }: PlotDrawerProps) {
                 <div>
                   <span className="text-muted-foreground">Tamanho Médio:</span>
                   <span className="ml-2 font-medium">
-                    {vision.avg_fruit_size !== null && vision.avg_fruit_size !== undefined
-                      ? `${vision.avg_fruit_size.toFixed(0)}mm`
+                    {vision.avg_fruit_size != null
+                      ? `${Number(vision.avg_fruit_size).toFixed(0)}mm`
                       : 'N/A'}
                   </span>
                 </div>
@@ -160,20 +160,20 @@ export function PlotDrawer({ plot, open, onOpenChange }: PlotDrawerProps) {
                   <span className="text-muted-foreground">Estresse Hídrico:</span>
                   <span className={cn(
                     "ml-2 font-medium",
-                    vision.water_stress_level !== null && vision.water_stress_level > 60 ? "text-status-critical" :
-                    vision.water_stress_level !== null && vision.water_stress_level > 40 ? "text-status-warning" :
+                    vision.water_stress_level != null && Number(vision.water_stress_level) > 60 ? "text-status-critical" :
+                    vision.water_stress_level != null && Number(vision.water_stress_level) > 40 ? "text-status-warning" :
                     "text-status-ok"
                   )}>
-                    {vision.water_stress_level !== null && vision.water_stress_level !== undefined
-                      ? `${vision.water_stress_level.toFixed(0)}%`
+                    {vision.water_stress_level != null
+                      ? `${Number(vision.water_stress_level).toFixed(0)}%`
                       : 'N/A'}
                   </span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Maturação:</span>
                   <span className="ml-2 font-medium">
-                    {vision.maturity_index !== null && vision.maturity_index !== undefined
-                      ? `${vision.maturity_index.toFixed(0)}%`
+                    {vision.maturity_index != null
+                      ? `${Number(vision.maturity_index).toFixed(0)}%`
                       : 'N/A'}
                   </span>
                 </div>

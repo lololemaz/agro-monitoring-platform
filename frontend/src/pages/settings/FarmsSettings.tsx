@@ -46,11 +46,18 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { farmsService } from '@/services/farmsService';
 import { getErrorMessage } from '@/services/api';
 import { useFarm } from '@/contexts/FarmContext';
+import { useOrganization } from '@/contexts/OrganizationContext';
+import { LocationPicker } from '@/components/map/LocationPicker';
 import type { Farm, FarmCreate, FarmUpdate } from '@/types/farm';
+
+interface Coordinates {
+  lat: number;
+  lng: number;
+}
 
 interface FormData {
   name: string;
@@ -58,6 +65,7 @@ interface FormData {
   total_area: string;
   address: string;
   timezone: string;
+  coordinates: Coordinates | null;
 }
 
 const initialFormData: FormData = {
@@ -65,11 +73,13 @@ const initialFormData: FormData = {
   code: '',
   total_area: '',
   address: '',
-  timezone: 'America/Sao_Paulo',
+  timezone: 'America/Recife',
+  coordinates: null,
 };
 
 export default function FarmsSettings() {
   const { refreshFarms } = useFarm();
+  const { effectiveOrganizationId } = useOrganization();
   const [farms, setFarms] = useState<Farm[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -130,12 +140,19 @@ export default function FarmsSettings() {
       return;
     }
 
+    if (!effectiveOrganizationId) {
+      toast.error('Selecione uma organização primeiro');
+      return;
+    }
+
     const payload: FarmCreate = {
       name: formData.name.trim(),
       code: formData.code.trim() || undefined,
       total_area: formData.total_area ? parseFloat(formData.total_area) : undefined,
       address: formData.address.trim() || undefined,
       timezone: formData.timezone || undefined,
+      coordinates: formData.coordinates || undefined,
+      organization_id: effectiveOrganizationId,
     };
 
     setIsSaving(true);
@@ -168,6 +185,7 @@ export default function FarmsSettings() {
       total_area: formData.total_area ? parseFloat(formData.total_area) : undefined,
       address: formData.address.trim() || undefined,
       timezone: formData.timezone || undefined,
+      coordinates: formData.coordinates || undefined,
     };
 
     setIsSaving(true);
@@ -216,7 +234,8 @@ export default function FarmsSettings() {
       code: farm.code || '',
       total_area: farm.total_area?.toString() || '',
       address: farm.address || '',
-      timezone: farm.timezone || 'America/Sao_Paulo',
+      timezone: farm.timezone || 'America/Recife',
+      coordinates: farm.coordinates || null,
     });
     setIsEditOpen(true);
   };
@@ -396,7 +415,7 @@ export default function FarmsSettings() {
 
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nova Fazenda</DialogTitle>
             <DialogDescription>
@@ -444,6 +463,11 @@ export default function FarmsSettings() {
                 placeholder="Ex: Rodovia BR-101, km 45, Petrolina-PE"
               />
             </div>
+            <LocationPicker
+              value={formData.coordinates}
+              onChange={(coords) => setFormData({ ...formData, coordinates: coords })}
+              height="250px"
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
@@ -458,7 +482,7 @@ export default function FarmsSettings() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Fazenda</DialogTitle>
             <DialogDescription>
@@ -506,6 +530,11 @@ export default function FarmsSettings() {
                 placeholder="Ex: Rodovia BR-101, km 45, Petrolina-PE"
               />
             </div>
+            <LocationPicker
+              value={formData.coordinates}
+              onChange={(coords) => setFormData({ ...formData, coordinates: coords })}
+              height="250px"
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditOpen(false)}>

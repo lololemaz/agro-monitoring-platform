@@ -3,6 +3,7 @@
  */
 
 export type ProductionStage = 
+  | 'vegetativo'
   | 'floracao' 
   | 'frutificacao' 
   | 'crescimento' 

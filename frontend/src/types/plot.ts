@@ -4,6 +4,12 @@
 
 export type PlotStatus = 'ok' | 'warning' | 'critical' | 'offline';
 
+export interface PlotCoordinates {
+  latitude?: number;
+  longitude?: number;
+  polygon?: [number, number][]; // Array de [lat, lng]
+}
+
 export interface Plot {
   id: string;
   farm_id: string;
@@ -16,7 +22,7 @@ export interface Plot {
   season: string | null;
   row_count: number;
   tree_count: number;
-  coordinates: Record<string, unknown> | null;
+  coordinates: PlotCoordinates | null;
   grid_position: {
     row: number;
     col: number;
@@ -39,7 +45,7 @@ export interface PlotCreate {
   season?: string;
   row_count?: number;
   tree_count?: number;
-  coordinates?: Record<string, unknown>;
+  coordinates?: PlotCoordinates;
   grid_position?: {
     row: number;
     col: number;
@@ -57,7 +63,7 @@ export interface PlotUpdate {
   season?: string;
   row_count?: number;
   tree_count?: number;
-  coordinates?: Record<string, unknown>;
+  coordinates?: PlotCoordinates;
   grid_position?: {
     row: number;
     col: number;

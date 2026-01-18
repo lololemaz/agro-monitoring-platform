@@ -43,7 +43,7 @@ export function MetricChart({ data, metric, showIdealRange = true, className }: 
 
   const chartData = data.map(reading => ({
     time: reading.timestamp.getTime(),
-    value: reading[metric],
+    value: Number(reading[metric]) || 0,
     label: format(reading.timestamp, 'HH:mm', { locale: ptBR }),
   }));
 
@@ -87,7 +87,7 @@ export function MetricChart({ data, metric, showIdealRange = true, className }: 
             tickLine={false}
             axisLine={{ stroke: 'hsl(var(--border))' }}
             width={40}
-            tickFormatter={(value) => value.toFixed(metric === 'ec' ? 1 : 0)}
+            tickFormatter={(value) => Number(value).toFixed(metric === 'ec' ? 1 : 0)}
           />
 
           <Tooltip
@@ -97,8 +97,8 @@ export function MetricChart({ data, metric, showIdealRange = true, className }: 
               borderRadius: 'var(--radius)',
               fontSize: 12,
             }}
-            formatter={(value: number) => [
-              `${value.toFixed(metric === 'ec' ? 2 : 1)} ${config.unit}`,
+            formatter={(value: number | string) => [
+              `${Number(value).toFixed(metric === 'ec' ? 2 : 1)} ${config.unit}`,
               config.label
             ]}
             labelFormatter={(value) => format(new Date(value), "dd/MM HH:mm", { locale: ptBR })}

@@ -189,38 +189,38 @@ export default function PlotDetail() {
           />
           <KpiCard
             title="Umidade"
-            value={currentSoil?.moisture !== null ? `${currentSoil?.moisture?.toFixed(1)}%` : '-'}
+            value={currentSoil?.moisture != null ? `${Number(currentSoil.moisture).toFixed(1)}%` : '-'}
             icon={Droplets}
           />
           <KpiCard
             title="Temperatura"
-            value={currentSoil?.temperature !== null ? `${currentSoil?.temperature?.toFixed(1)}C` : '-'}
+            value={currentSoil?.temperature != null ? `${Number(currentSoil.temperature).toFixed(1)}C` : '-'}
             icon={Thermometer}
           />
           <KpiCard
             title="CE"
-            value={currentSoil?.ec !== null ? `${currentSoil?.ec?.toFixed(2)}` : '-'}
+            value={currentSoil?.ec != null ? `${Number(currentSoil.ec).toFixed(2)}` : '-'}
             subtitle="mS/cm"
             icon={Zap}
           />
           <KpiCard
             title="pH"
-            value={currentSoil?.ph !== null ? currentSoil?.ph?.toFixed(1) : '-'}
+            value={currentSoil?.ph != null ? Number(currentSoil.ph).toFixed(1) : '-'}
             icon={Target}
           />
           <KpiCard
             title="NDVI"
-            value={currentVision?.ndvi !== null ? currentVision?.ndvi?.toFixed(2) : '-'}
+            value={currentVision?.ndvi != null ? Number(currentVision.ndvi).toFixed(2) : '-'}
             icon={Activity}
           />
           <KpiCard
             title="Clorofila"
-            value={currentVision?.chlorophyll_level !== null ? `${currentVision?.chlorophyll_level?.toFixed(0)}%` : '-'}
+            value={currentVision?.chlorophyll_level != null ? `${Number(currentVision.chlorophyll_level).toFixed(0)}%` : '-'}
             icon={Leaf}
           />
           <KpiCard
             title="Prod. Estimada"
-            value={plot.estimated_yield ? `${(plot.estimated_yield / 1000).toFixed(1)}t` : '-'}
+            value={plot.estimated_yield ? `${(Number(plot.estimated_yield) / 1000).toFixed(1)}t` : '-'}
             icon={TrendingUp}
           />
         </div>
@@ -234,7 +234,7 @@ export default function PlotDetail() {
               </div>
               <p className="text-2xl font-bold">{(currentVision.fruit_count || 0).toLocaleString()}</p>
               <p className="text-xs text-muted-foreground">
-                Tamanho medio: {currentVision.avg_fruit_size?.toFixed(0) || '-'}mm
+                Tamanho medio: {currentVision.avg_fruit_size != null ? Number(currentVision.avg_fruit_size).toFixed(0) : '-'}mm
               </p>
             </div>
             <div className="bg-card rounded-lg border p-4">
@@ -244,11 +244,11 @@ export default function PlotDetail() {
               </div>
               <p className={cn(
                 "text-2xl font-bold",
-                (currentVision.water_stress_level ?? 0) > 60 ? "text-status-critical" :
-                (currentVision.water_stress_level ?? 0) > 40 ? "text-status-warning" :
+                Number(currentVision.water_stress_level ?? 0) > 60 ? "text-status-critical" :
+                Number(currentVision.water_stress_level ?? 0) > 40 ? "text-status-warning" :
                 "text-status-ok"
               )}>
-                {currentVision.water_stress_level?.toFixed(0) || 0}%
+                {currentVision.water_stress_level != null ? Number(currentVision.water_stress_level).toFixed(0) : 0}%
               </p>
               <p className="text-xs text-muted-foreground">
                 {currentVision.irrigation_failures > 0 
@@ -261,9 +261,9 @@ export default function PlotDetail() {
                 <Leaf className="w-4 h-4 text-chart-nitrogen" />
                 <span className="text-sm font-medium">Indice de Maturacao</span>
               </div>
-              <p className="text-2xl font-bold">{currentVision.maturity_index?.toFixed(0) || '-'}%</p>
+              <p className="text-2xl font-bold">{currentVision.maturity_index != null ? Number(currentVision.maturity_index).toFixed(0) : '-'}%</p>
               <p className="text-xs text-muted-foreground">
-                Floracao: {currentVision.flowering_percentage?.toFixed(0) || '-'}%
+                Floracao: {currentVision.flowering_percentage != null ? Number(currentVision.flowering_percentage).toFixed(0) : '-'}%
               </p>
             </div>
             <div className="bg-card rounded-lg border p-4">
@@ -374,25 +374,25 @@ export default function PlotDetail() {
                           {format(new Date(reading.time), "dd/MM HH:mm", { locale: ptBR })}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {reading.moisture?.toFixed(1) || '-'}%
+                          {reading.moisture != null ? `${Number(reading.moisture).toFixed(1)}%` : '-'}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {reading.temperature?.toFixed(1) || '-'}
+                          {reading.temperature != null ? Number(reading.temperature).toFixed(1) : '-'}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {reading.ec?.toFixed(2) || '-'}
+                          {reading.ec != null ? Number(reading.ec).toFixed(2) : '-'}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {reading.ph?.toFixed(1) || '-'}
+                          {reading.ph != null ? Number(reading.ph).toFixed(1) : '-'}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {reading.nitrogen?.toFixed(0) || '-'}
+                          {reading.nitrogen != null ? Number(reading.nitrogen).toFixed(0) : '-'}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {reading.phosphorus?.toFixed(0) || '-'}
+                          {reading.phosphorus != null ? Number(reading.phosphorus).toFixed(0) : '-'}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {reading.potassium?.toFixed(0) || '-'}
+                          {reading.potassium != null ? Number(reading.potassium).toFixed(0) : '-'}
                         </TableCell>
                       </TableRow>
                     ))}

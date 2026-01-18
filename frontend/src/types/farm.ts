@@ -32,6 +32,7 @@ export interface FarmCreate {
   };
   timezone?: string;
   settings?: Record<string, unknown>;
+  organization_id?: string;
 }
 
 export interface FarmUpdate {

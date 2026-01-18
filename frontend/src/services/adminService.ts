@@ -13,8 +13,8 @@ import type {
 import type { User } from '@/types/auth';
 
 export interface AdminSensorCreate {
-  farm_id?: string;
-  plot_id?: string;
+  farm_id: string;
+  plot_id: string;
   sensor_type_id: string;
   name: string;
   dev_eui?: string;

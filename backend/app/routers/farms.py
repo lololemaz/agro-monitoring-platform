@@ -106,6 +106,12 @@ async def create_farm(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Usuário não pertence a uma organização",
             )
+        # Se usuário normal tentar passar organization_id diferente da sua, bloqueia
+        if farm_data.organization_id and farm_data.organization_id != current_user.organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Você não pode criar fazendas para outra organização",
+            )
         org_id = current_user.organization_id
 
     farm = Farm(

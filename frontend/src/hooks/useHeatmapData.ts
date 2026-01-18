@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { sensorsService, type SensorHeatmapData } from '@/services/sensorsService';
 import { 
   farmTrees, 
@@ -6,6 +6,8 @@ import {
   type HeatmapMetricType, 
   getUniquePlots 
 } from '@/data/heatmapData';
+
+const AUTO_REFRESH_INTERVAL = 30000; // 30 segundos
 
 interface UseHeatmapDataResult {
   trees: TreeData[];
@@ -91,6 +93,23 @@ export function useHeatmapData(farmId: string | null): UseHeatmapDataResult {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Auto-refresh a cada 30 segundos (apenas se estiver usando dados reais)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    if (!farmId || isUsingMockData) return;
+    
+    intervalRef.current = setInterval(() => {
+      loadData();
+    }, AUTO_REFRESH_INTERVAL);
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [farmId, isUsingMockData, loadData]);
 
   const trees = useMemo(() => {
     if (isUsingMockData) {

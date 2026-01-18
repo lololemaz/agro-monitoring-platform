@@ -20,7 +20,7 @@ def upgrade() -> None:
     op.execute("""
         INSERT INTO roles (id, organization_id, name, slug, description, is_system_role, permissions)
         VALUES 
-            (uuid_generate_v4(), NULL, 'Executivo', 'executive', 'Acesso total a organizacao, pode gerenciar usuarios e configuracoes', true, '["read", "write", "manage_users", "manage_settings"]'::jsonb),
+            (uuid_generate_v4(), NULL, 'Gerente', 'manager', 'Acesso total a organizacao, pode gerenciar usuarios e configuracoes', true, '["read", "write", "manage_users", "manage_settings"]'::jsonb),
             (uuid_generate_v4(), NULL, 'Agronomo', 'agronomist', 'Pode visualizar e editar dados de fazendas, talhoes e sensores', true, '["read", "write", "manage_farms"]'::jsonb),
             (uuid_generate_v4(), NULL, 'Operador', 'operator', 'Pode visualizar dados e registrar eventos', true, '["read", "create_events"]'::jsonb),
             (uuid_generate_v4(), NULL, 'Visualizador', 'viewer', 'Apenas visualizacao de dados', true, '["read"]'::jsonb)

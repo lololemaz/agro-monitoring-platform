@@ -302,25 +302,15 @@ async def list_all_sensors(
 @router.post("/sensors", response_model=SensorResponse, status_code=status.HTTP_201_CREATED)
 async def create_sensor(
     sensor_data: SensorCreate,
+    organization_id: UUID,
     current_user: CurrentSuperuser,
     db: Session = Depends(get_db),
-    organization_id: UUID | None = None,
 ):
     """Cria um novo sensor para uma organizacao.
 
     Apenas superusers podem criar sensores.
-    O organization_id pode ser passado como query param ou inferido da farm_id.
+    O organization_id e obrigatorio.
     """
-    if not organization_id and not sensor_data.farm_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="organization_id ou farm_id e obrigatorio",
-        )
-
-    if not organization_id and sensor_data.farm_id:
-        farm = db.query(Farm).filter(Farm.id == sensor_data.farm_id).first()
-        if farm:
-            organization_id = farm.organization_id
 
     org_service = OrganizationService(db)
     organization = org_service.get_by_id(organization_id)

@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGlobalFilters } from '@/contexts/GlobalFilterContext';
+import { useFarm } from '@/contexts/FarmContext';
+import { plotsService } from '@/services/plotsService';
 import {
   MangoVariety,
   ProductionStage,
@@ -15,7 +17,6 @@ import {
   irrigationStatusConfig,
   smartFilters,
 } from '@/types/filters';
-import { mockFarm } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -59,11 +60,17 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface PlotOption {
+  id: string;
+  name: string;
+}
+
 interface GlobalFilterBarProps {
   className?: string;
   showSearch?: boolean;
   showSmartFilters?: boolean;
   compact?: boolean;
+  plots?: PlotOption[];
 }
 
 export function GlobalFilterBar({
@@ -71,6 +78,7 @@ export function GlobalFilterBar({
   showSearch = true,
   showSmartFilters = true,
   compact = false,
+  plots: externalPlots,
 }: GlobalFilterBarProps) {
   const {
     filters,
@@ -85,6 +93,32 @@ export function GlobalFilterBar({
     deletePreset,
     activeFilterCount,
   } = useGlobalFilters();
+  
+  const { selectedFarm } = useFarm();
+  const [loadedPlots, setLoadedPlots] = useState<PlotOption[]>([]);
+  
+  // Carregar plots da API quando a fazenda mudar
+  useEffect(() => {
+    if (externalPlots) {
+      setLoadedPlots(externalPlots);
+      return;
+    }
+    
+    if (selectedFarm?.id) {
+      plotsService.getPlots(selectedFarm.id)
+        .then(plots => {
+          setLoadedPlots(plots.map(p => ({ id: p.id, name: p.name })));
+        })
+        .catch(err => {
+          console.error('Failed to load plots for filter:', err);
+          setLoadedPlots([]);
+        });
+    } else {
+      setLoadedPlots([]);
+    }
+  }, [selectedFarm?.id, externalPlots]);
+  
+  const availablePlots = loadedPlots;
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -120,10 +154,11 @@ export function GlobalFilterBar({
     updateFilter(key as any, newArray);
   };
 
-  // Calculate affected count (simplified - in real app, this would filter actual data)
+  // Calculate affected count based on available plots
+  const totalPlots = availablePlots.length;
   const affectedCount = activeFilterCount > 0 
-    ? Math.max(1, Math.floor(mockFarm.plots.length * (1 - activeFilterCount * 0.1)))
-    : mockFarm.plots.length;
+    ? Math.max(1, Math.floor(totalPlots * (1 - activeFilterCount * 0.1)))
+    : totalPlots;
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -257,15 +292,19 @@ export function GlobalFilterBar({
         >
           <ScrollArea className="h-[250px] p-2">
             <div className="space-y-1">
-              {mockFarm.plots.map((plot) => (
-                <label key={plot.id} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded">
-                  <Checkbox
-                    checked={filters.plots.includes(plot.id)}
-                    onCheckedChange={() => toggleArrayFilter('plots', plot.id, filters.plots)}
-                  />
-                  <span className="text-sm">{plot.name}</span>
-                </label>
-              ))}
+              {availablePlots.length > 0 ? (
+                availablePlots.map((plot) => (
+                  <label key={plot.id} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded">
+                    <Checkbox
+                      checked={filters.plots.includes(plot.id)}
+                      onCheckedChange={() => toggleArrayFilter('plots', plot.id, filters.plots)}
+                    />
+                    <span className="text-sm">{plot.name}</span>
+                  </label>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground p-2">Nenhum talhão disponível</p>
+              )}
             </div>
           </ScrollArea>
         </FilterDropdown>
@@ -407,7 +446,7 @@ export function GlobalFilterBar({
 
           <Separator orientation="vertical" className="h-4" />
           <span className="text-xs text-muted-foreground">
-            {affectedCount} de {mockFarm.plots.length} talhões
+            {affectedCount} de {totalPlots} talhões
           </span>
         </div>
       )}

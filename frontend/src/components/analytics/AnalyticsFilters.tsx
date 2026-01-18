@@ -13,7 +13,6 @@ import {
   RiskLevel,
   riskLevelLabels 
 } from '@/data/analyticsData';
-import { mockFarm } from '@/data/mockData';
 import { 
   Filter, 
   X, 

@@ -40,13 +40,14 @@ engine = create_engine(DATABASE_URL, pool_size=5, max_overflow=10)
 SessionLocal = sessionmaker(bind=engine)
 
 def get_sensor_metadata(session, dev_eui):
-    """Récupère l'ID, le plot et l'organisation via le DevEUI (serial_number)."""
+    """Recupera ID, plot e organizacao via DevEUI."""
+    dev_eui_upper = dev_eui.upper()
     query = text("""
         SELECT id, plot_id, organization_id FROM sensors 
-        WHERE (serial_number = :dev_eui OR mac_address = :dev_eui) 
-        AND is_active = true LIMIT 1
+        WHERE (UPPER(dev_eui) = :dev_eui OR UPPER(serial_number) = :dev_eui OR UPPER(mac_address) = :dev_eui) 
+        AND is_active = true AND deleted_at IS NULL LIMIT 1
     """)
-    return session.execute(query, {"dev_eui": dev_eui}).fetchone()
+    return session.execute(query, {"dev_eui": dev_eui_upper}).fetchone()
 
 def on_connect(client, userdata, flags, rc):
     """Callback de connexion MQTT."""

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -32,10 +32,16 @@ import {
   scopeConfig,
   farmEvents
 } from '@/data/eventsData';
-import { mockFarm } from '@/data/mockData';
+import { useFarm } from '@/contexts/FarmContext';
+import { plotsService } from '@/services/plotsService';
 import { CalendarIcon, Plus, Clock, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+interface PlotOption {
+  id: string;
+  name: string;
+}
 
 interface EventFormDialogProps {
   open: boolean;
@@ -43,6 +49,7 @@ interface EventFormDialogProps {
   defaultPlotId?: string;
   defaultDate?: Date;
   onEventCreated?: (event: FarmEvent) => void;
+  plots?: PlotOption[];
 }
 
 const titleSuggestions: Record<EventType, string[]> = {
@@ -61,8 +68,11 @@ export function EventFormDialog({
   onOpenChange, 
   defaultPlotId,
   defaultDate,
-  onEventCreated 
+  onEventCreated,
+  plots: externalPlots
 }: EventFormDialogProps) {
+  const { selectedFarm } = useFarm();
+  const [availablePlots, setAvailablePlots] = useState<PlotOption[]>(externalPlots || []);
   const [eventType, setEventType] = useState<EventType>('irrigation');
   const [scope, setScope] = useState<EventScope>(defaultPlotId ? 'plot' : 'farm');
   const [scopeId, setScopeId] = useState<string>(defaultPlotId || '');
@@ -71,6 +81,24 @@ export function EventFormDialog({
   const [time, setTime] = useState(format(new Date(), 'HH:mm'));
   const [notes, setNotes] = useState('');
   const [operator, setOperator] = useState('');
+
+  // Carregar plots da API se não fornecidos externamente
+  useEffect(() => {
+    if (externalPlots) {
+      setAvailablePlots(externalPlots);
+      return;
+    }
+    
+    if (selectedFarm?.id && open) {
+      plotsService.getPlots(selectedFarm.id)
+        .then(plots => {
+          setAvailablePlots(plots.map(p => ({ id: p.id, name: p.name })));
+        })
+        .catch(err => {
+          console.error('Failed to load plots:', err);
+        });
+    }
+  }, [selectedFarm?.id, open, externalPlots]);
   
   // Type-specific fields
   const [durationChange, setDurationChange] = useState('30');
@@ -125,7 +153,7 @@ export function EventFormDialog({
       scope,
       scopeId: scope !== 'farm' ? scopeId : undefined,
       scopeName: scope !== 'farm' 
-        ? mockFarm.plots.find(p => p.id === scopeId)?.name || scopeId
+        ? availablePlots.find(p => p.id === scopeId)?.name || scopeId
         : 'Toda a Fazenda',
       title: title || titleSuggestions[eventType][0],
       timestamp,
@@ -261,11 +289,15 @@ export function EventFormDialog({
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockFarm.plots.map((plot) => (
-                      <SelectItem key={plot.id} value={plot.id}>
-                        {plot.name}
-                      </SelectItem>
-                    ))}
+                    {availablePlots.length > 0 ? (
+                      availablePlots.map((plot) => (
+                        <SelectItem key={plot.id} value={plot.id}>
+                          {plot.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>Nenhum talhão disponível</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { plotsService } from '@/services/plotsService';
 import { sensorsService } from '@/services/sensorsService';
 import type { Plot, SoilReading, VisionData, PlotWithReadings } from '@/types/plot';
 import type { Sensor } from '@/types/sensor';
+
+const AUTO_REFRESH_INTERVAL = 30000; // 30 segundos
 
 interface UsePlotDetailResult {
   plot: PlotWithReadings | null;
@@ -70,6 +72,23 @@ export function usePlotDetail(plotId: string | undefined): UsePlotDetailResult {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Auto-refresh a cada 30 segundos
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    if (!plotId) return;
+    
+    intervalRef.current = setInterval(() => {
+      loadData();
+    }, AUTO_REFRESH_INTERVAL);
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [plotId, loadData]);
 
   return {
     plot,

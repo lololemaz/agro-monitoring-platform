@@ -100,14 +100,14 @@ export function SensorHealthList({
                         </span>
                       </div>
                     )}
-                    {sensor.issue === 'low_battery' && sensor.battery_level !== null && (
+                    {sensor.issue === 'low_battery' && sensor.battery_level != null && (
                       <p className="text-xs text-status-warning mt-0.5">
-                        Bateria: {sensor.battery_level.toFixed(0)}%
+                        Bateria: {Number(sensor.battery_level).toFixed(0)}%
                       </p>
                     )}
-                    {sensor.issue === 'weak_signal' && sensor.signal_strength !== null && (
+                    {sensor.issue === 'weak_signal' && sensor.signal_strength != null && (
                       <p className="text-xs text-yellow-600 mt-0.5">
-                        Sinal: {sensor.signal_strength.toFixed(0)}%
+                        Sinal: {Number(sensor.signal_strength).toFixed(0)}%
                       </p>
                     )}
                   </div>

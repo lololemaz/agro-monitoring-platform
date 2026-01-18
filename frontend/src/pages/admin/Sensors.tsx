@@ -62,6 +62,8 @@ import { adminService, type AdminSensorCreate, type AdminSensorUpdate } from '@/
 import { farmsService } from '@/services/farmsService';
 import { plotsService } from '@/services/plotsService';
 import { getErrorMessage } from '@/services/api';
+import { LocationPicker } from '@/components/map/LocationPicker';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Organization } from '@/types/organization';
 import type { Sensor, SensorType } from '@/types/sensor';
 import type { Farm } from '@/types/farm';
@@ -72,10 +74,12 @@ interface FormData {
   sensor_type_id: string;
   farm_id: string;
   plot_id: string;
+  dev_eui: string;
   serial_number: string;
   mac_address: string;
   firmware_version: string;
   location_description: string;
+  coordinates: { lat: number; lng: number } | null;
 }
 
 const initialFormData: FormData = {
@@ -83,10 +87,12 @@ const initialFormData: FormData = {
   sensor_type_id: '',
   farm_id: '',
   plot_id: '',
+  dev_eui: '',
   serial_number: '',
   mac_address: '',
   firmware_version: '',
   location_description: '',
+  coordinates: null,
 };
 
 export default function Sensors() {
@@ -244,6 +250,9 @@ export default function Sensors() {
     if (!formData.name.trim()) return 'Nome é obrigatório';
     if (!formData.sensor_type_id) return 'Tipo de sensor é obrigatório';
     if (!formData.farm_id) return 'Fazenda é obrigatória';
+    if (!formData.plot_id) return 'Talhão é obrigatório';
+    if (!formData.dev_eui.trim()) return 'DevEUI é obrigatório';
+    if (formData.dev_eui.trim().length !== 16) return 'DevEUI deve ter 16 caracteres';
     return null;
   };
 
@@ -257,14 +266,16 @@ export default function Sensors() {
     const payload: AdminSensorCreate = {
       name: formData.name.trim(),
       sensor_type_id: formData.sensor_type_id,
-      farm_id: formData.farm_id || undefined,
-      plot_id: formData.plot_id || undefined,
+      farm_id: formData.farm_id,
+      plot_id: formData.plot_id,
+      dev_eui: formData.dev_eui.trim().toUpperCase(),
       serial_number: formData.serial_number.trim() || undefined,
       mac_address: formData.mac_address.trim() || undefined,
       firmware_version: formData.firmware_version.trim() || undefined,
-      location: formData.location_description.trim() 
-        ? { description: formData.location_description.trim() }
-        : undefined,
+      location: {
+        ...(formData.location_description.trim() && { description: formData.location_description.trim() }),
+        ...(formData.coordinates && { lat: formData.coordinates.lat, lng: formData.coordinates.lng }),
+      },
     };
 
     setIsSaving(true);
@@ -295,12 +306,14 @@ export default function Sensors() {
       sensor_type_id: formData.sensor_type_id,
       farm_id: formData.farm_id || undefined,
       plot_id: formData.plot_id || undefined,
+      dev_eui: formData.dev_eui.trim().toUpperCase() || undefined,
       serial_number: formData.serial_number.trim() || undefined,
       mac_address: formData.mac_address.trim() || undefined,
       firmware_version: formData.firmware_version.trim() || undefined,
-      location: formData.location_description.trim() 
-        ? { description: formData.location_description.trim() }
-        : undefined,
+      location: {
+        ...(formData.location_description.trim() && { description: formData.location_description.trim() }),
+        ...(formData.coordinates && { lat: formData.coordinates.lat, lng: formData.coordinates.lng }),
+      },
     };
 
     setIsSaving(true);
@@ -346,15 +359,18 @@ export default function Sensors() {
 
   const openEditDialog = async (sensor: Sensor) => {
     setSelectedSensor(sensor);
+    const location = sensor.location as { lat?: number; lng?: number; description?: string } | null;
     setFormData({
       name: sensor.name,
       sensor_type_id: sensor.sensor_type_id,
       farm_id: sensor.farm_id || '',
       plot_id: sensor.plot_id || '',
+      dev_eui: sensor.dev_eui || '',
       serial_number: sensor.serial_number || '',
       mac_address: sensor.mac_address || '',
       firmware_version: sensor.firmware_version || '',
-      location_description: sensor.location?.description || '',
+      location_description: location?.description || '',
+      coordinates: location?.lat && location?.lng ? { lat: location.lat, lng: location.lng } : null,
     });
     if (sensor.farm_id) {
       await loadPlots(sensor.farm_id);
@@ -636,14 +652,15 @@ export default function Sensors() {
 
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-[550px]">
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Novo Sensor</DialogTitle>
             <DialogDescription>
               Cadastre um novo sensor para a organização
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <ScrollArea className="max-h-[calc(90vh-180px)]">
+          <div className="grid gap-4 py-4 pr-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Nome *</Label>
               <Input
@@ -711,6 +728,20 @@ export default function Sensors() {
                 </Select>
               </div>
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="dev_eui">DevEUI *</Label>
+              <Input
+                id="dev_eui"
+                value={formData.dev_eui}
+                onChange={(e) => setFormData({ ...formData, dev_eui: e.target.value.toUpperCase() })}
+                placeholder="Ex: 0004A30B001C1234"
+                maxLength={16}
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground">
+                Identificador único do dispositivo LoRaWAN (16 caracteres hexadecimais)
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="serial">Número de Série</Label>
@@ -749,7 +780,13 @@ export default function Sensors() {
                 placeholder="Ex: Entrada do talhão, próximo ao reservatório"
               />
             </div>
+            <LocationPicker
+              value={formData.coordinates}
+              onChange={(coords) => setFormData({ ...formData, coordinates: coords })}
+              label="Coordenadas do Sensor"
+            />
           </div>
+          </ScrollArea>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
               Cancelar
@@ -763,14 +800,15 @@ export default function Sensors() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[550px]">
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Editar Sensor</DialogTitle>
             <DialogDescription>
               Atualize os dados do sensor
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <ScrollArea className="max-h-[calc(90vh-180px)]">
+          <div className="grid gap-4 py-4 pr-4">
             <div className="grid gap-2">
               <Label htmlFor="edit-name">Nome *</Label>
               <Input
@@ -838,6 +876,20 @@ export default function Sensors() {
                 </Select>
               </div>
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-dev_eui">DevEUI *</Label>
+              <Input
+                id="edit-dev_eui"
+                value={formData.dev_eui}
+                onChange={(e) => setFormData({ ...formData, dev_eui: e.target.value.toUpperCase() })}
+                placeholder="Ex: 0004A30B001C1234"
+                maxLength={16}
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground">
+                Identificador único do dispositivo LoRaWAN (16 caracteres hexadecimais)
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="edit-serial">Número de Série</Label>
@@ -876,7 +928,13 @@ export default function Sensors() {
                 placeholder="Ex: Entrada do talhão, próximo ao reservatório"
               />
             </div>
+            <LocationPicker
+              value={formData.coordinates}
+              onChange={(coords) => setFormData({ ...formData, coordinates: coords })}
+              label="Coordenadas do Sensor"
+            />
           </div>
+          </ScrollArea>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditOpen(false)}>
               Cancelar

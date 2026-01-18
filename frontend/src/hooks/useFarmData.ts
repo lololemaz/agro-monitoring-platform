@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { plotsService } from '@/services/plotsService';
 import { alertsService } from '@/services/alertsService';
 import { eventsService } from '@/services/eventsService';
@@ -7,6 +7,8 @@ import type { PlotWithReadings, PlotStatus } from '@/types/plot';
 import type { Alert } from '@/types/alert';
 import type { Event } from '@/types/event';
 import type { SensorHealthIssue } from '@/services/sensorsService';
+
+const AUTO_REFRESH_INTERVAL = 30000; // 30 segundos
 
 export interface FarmStats {
   totalPlots: number;
@@ -175,6 +177,23 @@ export function useFarmData(farmId: string | null): UseFarmDataResult {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Auto-refresh a cada 30 segundos
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    if (!farmId) return;
+    
+    intervalRef.current = setInterval(() => {
+      loadData(true);
+    }, AUTO_REFRESH_INTERVAL);
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [farmId, loadData]);
 
   const refresh = useCallback(() => loadData(true), [loadData]);
 

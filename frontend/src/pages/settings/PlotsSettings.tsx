@@ -57,6 +57,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { farmsService } from '@/services/farmsService';
 import { plotsService } from '@/services/plotsService';
 import { getErrorMessage } from '@/services/api';
+import { PolygonEditor } from '@/components/map/PolygonEditor';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Farm } from '@/types/farm';
 import type { Plot, PlotCreate, PlotUpdate } from '@/types/plot';
 
@@ -70,6 +72,8 @@ interface FormData {
   row_count: string;
   tree_count: string;
   season: string;
+  coordinates: { lat: number; lng: number } | null;
+  polygon: [number, number][];
 }
 
 const initialFormData: FormData = {
@@ -82,6 +86,8 @@ const initialFormData: FormData = {
   row_count: '',
   tree_count: '',
   season: '',
+  coordinates: null,
+  polygon: [],
 };
 
 const CROP_TYPES = ['Manga', 'Uva', 'Coco', 'Goiaba', 'Acerola', 'Melão', 'Mamão'];
@@ -196,6 +202,11 @@ export default function PlotsSettings() {
       row_count: formData.row_count ? parseInt(formData.row_count) : undefined,
       tree_count: formData.tree_count ? parseInt(formData.tree_count) : undefined,
       season: formData.season.trim() || undefined,
+      coordinates: formData.polygon.length > 0 
+        ? { polygon: formData.polygon }
+        : formData.coordinates 
+          ? { latitude: formData.coordinates.lat, longitude: formData.coordinates.lng }
+          : undefined,
     };
 
     setIsSaving(true);
@@ -230,7 +241,16 @@ export default function PlotsSettings() {
       row_count: formData.row_count ? parseInt(formData.row_count) : undefined,
       tree_count: formData.tree_count ? parseInt(formData.tree_count) : undefined,
       season: formData.season.trim() || undefined,
+      coordinates: formData.polygon.length > 0 
+        ? { polygon: formData.polygon }
+        : formData.coordinates 
+          ? { latitude: formData.coordinates.lat, longitude: formData.coordinates.lng }
+          : undefined,
     };
+
+    console.log('Atualizando talhao:', selectedPlot.id);
+    console.log('Payload:', JSON.stringify(payload, null, 2));
+    console.log('Poligono no form:', formData.polygon);
 
     setIsSaving(true);
     try {
@@ -271,6 +291,7 @@ export default function PlotsSettings() {
 
   const openEditDialog = (plot: Plot) => {
     setSelectedPlot(plot);
+    const coords = plot.coordinates;
     setFormData({
       farm_id: plot.farm_id,
       name: plot.name,
@@ -281,6 +302,10 @@ export default function PlotsSettings() {
       row_count: plot.row_count?.toString() || '',
       tree_count: plot.tree_count?.toString() || '',
       season: plot.season || '',
+      coordinates: coords?.latitude && coords?.longitude 
+        ? { lat: coords.latitude, lng: coords.longitude } 
+        : null,
+      polygon: coords?.polygon || [],
     });
     setIsEditOpen(true);
   };
@@ -293,9 +318,18 @@ export default function PlotsSettings() {
   // Stats
   const stats = useMemo(() => ({
     total: plots.length,
-    totalArea: plots.reduce((sum, p) => sum + (p.area || 0), 0),
-    totalTrees: plots.reduce((sum, p) => sum + (p.tree_count || 0), 0),
+    totalArea: plots.reduce((sum, p) => sum + (Number(p.area) || 0), 0),
+    totalTrees: plots.reduce((sum, p) => sum + (Number(p.tree_count) || 0), 0),
   }), [plots]);
+
+  // Centro da fazenda selecionada para o mapa
+  const selectedFarmCenter = useMemo((): [number, number] | undefined => {
+    const farm = farms.find(f => f.id === formData.farm_id);
+    if (farm?.coordinates?.lat && farm?.coordinates?.lng) {
+      return [farm.coordinates.lat, farm.coordinates.lng];
+    }
+    return undefined;
+  }, [farms, formData.farm_id]);
 
   return (
     <div className="space-y-6">
@@ -497,14 +531,15 @@ export default function PlotsSettings() {
 
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-[550px]">
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Novo Talhão</DialogTitle>
             <DialogDescription>
               Cadastre um novo talhão
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <ScrollArea className="max-h-[calc(90vh-180px)]">
+          <div className="grid gap-4 py-4 pr-4">
             <div className="grid gap-2">
               <Label>Fazenda *</Label>
               <Select 
@@ -622,7 +657,21 @@ export default function PlotsSettings() {
                 />
               </div>
             </div>
+            <div className="grid gap-2">
+              <Label>Area do Talhao (desenhe no mapa)</Label>
+              <PolygonEditor
+                center={selectedFarmCenter}
+                defaultPolygon={formData.polygon}
+                onPolygonChange={(polygon) => setFormData({ ...formData, polygon })}
+                onAreaChange={(areaHa) => {
+                  if (areaHa > 0) {
+                    setFormData(prev => ({ ...prev, area: areaHa.toString() }));
+                  }
+                }}
+              />
+            </div>
           </div>
+          </ScrollArea>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
               Cancelar
@@ -636,14 +685,15 @@ export default function PlotsSettings() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[550px]">
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Editar Talhão</DialogTitle>
             <DialogDescription>
               Atualize os dados do talhão
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <ScrollArea className="max-h-[calc(90vh-180px)]">
+          <div className="grid gap-4 py-4 pr-4">
             <div className="grid gap-2">
               <Label>Fazenda</Label>
               <Input value={getFarmName(formData.farm_id)} disabled />
@@ -747,7 +797,21 @@ export default function PlotsSettings() {
                 />
               </div>
             </div>
+            <div className="grid gap-2">
+              <Label>Area do Talhao (desenhe no mapa)</Label>
+              <PolygonEditor
+                center={selectedFarmCenter}
+                defaultPolygon={formData.polygon}
+                onPolygonChange={(polygon) => setFormData({ ...formData, polygon })}
+                onAreaChange={(areaHa) => {
+                  if (areaHa > 0) {
+                    setFormData(prev => ({ ...prev, area: areaHa.toString() }));
+                  }
+                }}
+              />
+            </div>
           </div>
+          </ScrollArea>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditOpen(false)}>
               Cancelar

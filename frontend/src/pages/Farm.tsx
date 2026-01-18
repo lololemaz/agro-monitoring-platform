@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFarm } from "@/contexts/FarmContext";
+import { useGlobalFilters } from "@/contexts/GlobalFilterContext";
 import { useFarmData } from "@/hooks/useFarmData";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { PlotCard } from "@/components/PlotCard";
@@ -34,12 +35,15 @@ import {
 import type { PlotWithReadings } from "@/types/plot";
 import type { Alert } from "@/types/alert";
 
+const PlotMapView = lazy(() => import("@/components/map/PlotMapView").then(m => ({ default: m.PlotMapView })));
+
 type Period = '24h' | '7d' | '30d';
-type ViewMode = 'grid' | 'list';
+type ViewMode = 'grid' | 'list' | 'map';
 
 export default function Farm() {
   const navigate = useNavigate();
   const { selectedFarm } = useFarm();
+  const { filters } = useGlobalFilters();
   const { 
     plots, 
     alerts, 
@@ -56,6 +60,46 @@ export default function Farm() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [eventFormOpen, setEventFormOpen] = useState(false);
+
+  // Aplicar filtros aos plots
+  const filteredPlots = useMemo(() => {
+    let result = plots;
+    
+    // Filtro por busca (nome ou código)
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      result = result.filter(p => 
+        p.name.toLowerCase().includes(searchLower) ||
+        (p.code && p.code.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    // Filtro por plots específicos
+    if (filters.plots && filters.plots.length > 0) {
+      result = result.filter(p => filters.plots.includes(p.id));
+    }
+    
+    // Filtro por criticidade (status)
+    if (filters.criticalityLevels && filters.criticalityLevels.length > 0) {
+      result = result.filter(p => {
+        const status = p.status || 'ok';
+        // Mapear status para criticality levels
+        if (filters.criticalityLevels.includes('crítico') && status === 'critical') return true;
+        if (filters.criticalityLevels.includes('alto') && status === 'warning') return true;
+        if (filters.criticalityLevels.includes('médio') && status === 'ok') return true;
+        if (filters.criticalityLevels.includes('baixo') && status === 'ok') return true;
+        return false;
+      });
+    }
+    
+    return result;
+  }, [plots, filters.search, filters.plots, filters.criticalityLevels]);
+
+  // Plots disponíveis para o filtro
+  const plotOptions = useMemo(() => 
+    plots.map(p => ({ id: p.id, name: p.name })), 
+    [plots]
+  );
 
   const handlePlotClick = (plot: PlotWithReadings) => {
     setSelectedPlot(plot);
@@ -125,7 +169,7 @@ export default function Farm() {
         </div>
 
         {/* Global Filter Bar */}
-        <GlobalFilterBar className="mb-6" />
+        <GlobalFilterBar className="mb-6" plots={plotOptions} />
 
         {/* Health Score Banner */}
         <div 
@@ -148,13 +192,13 @@ export default function Farm() {
               )}
               <div>
                 <p className="text-sm text-muted-foreground">Pontuação de Saúde da Fazenda</p>
-                <p className="text-xl font-semibold">
-                  {isLoading ? (
-                    <Skeleton className="h-6 w-32" />
-                  ) : (
-                    stats.healthScore >= 70 ? 'Saudável' : stats.healthScore >= 50 ? 'Atenção Necessária' : 'Problemas Críticos'
-                  )}
-                </p>
+                {isLoading ? (
+                  <Skeleton className="h-6 w-32" />
+                ) : (
+                  <p className="text-xl font-semibold">
+                    {stats.healthScore >= 70 ? 'Saudável' : stats.healthScore >= 50 ? 'Atenção Necessária' : 'Problemas Críticos'}
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   {plots.length} talhões monitorados
                 </p>
@@ -162,21 +206,27 @@ export default function Farm() {
             </div>
             <div className="flex gap-6">
               <div className="text-center">
-                <p className="text-2xl font-bold">
-                  {isLoading ? <Skeleton className="h-8 w-16" /> : `${(stats.estimatedYield / 1000).toFixed(0)}t`}
-                </p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-16 mx-auto" />
+                ) : (
+                  <p className="text-2xl font-bold">{`${(stats.estimatedYield / 1000).toFixed(0)}t`}</p>
+                )}
                 <p className="text-xs text-muted-foreground">Prod. Estimada</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold">
-                  {isLoading ? <Skeleton className="h-8 w-16" /> : `${Math.round(stats.totalTrees / 1000)}k`}
-                </p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-16 mx-auto" />
+                ) : (
+                  <p className="text-2xl font-bold">{`${Math.round(stats.totalTrees / 1000)}k`}</p>
+                )}
                 <p className="text-xs text-muted-foreground">Árvores</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-status-critical">
-                  {isLoading ? <Skeleton className="h-8 w-8" /> : stats.activeAlerts}
-                </p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-8 mx-auto" />
+                ) : (
+                  <p className="text-2xl font-bold text-status-critical">{stats.activeAlerts}</p>
+                )}
                 <p className="text-xs text-muted-foreground">Alertas Ativos</p>
               </div>
             </div>
@@ -229,11 +279,14 @@ export default function Farm() {
                 </span>
               </h2>
               <div className="flex items-center gap-2">
-                <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setViewMode('grid')}>
+                <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setViewMode('grid')} title="Grade">
                   <LayoutGrid className="w-4 h-4" />
                 </Button>
-                <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setViewMode('list')}>
+                <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setViewMode('list')} title="Lista">
                   <List className="w-4 h-4" />
+                </Button>
+                <Button variant={viewMode === 'map' ? 'default' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setViewMode('map')} title="Mapa">
+                  <MapIcon className="w-4 h-4" />
                 </Button>
               </div>
             </div>
@@ -242,28 +295,52 @@ export default function Farm() {
               <div className={cn(
                 viewMode === 'grid' 
                   ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3"
+                  : viewMode === 'map'
+                  ? ""
                   : "flex flex-col gap-2"
               )}>
-                {Array(10).fill(0).map((_, i) => (
-                  <Skeleton key={i} className="h-32" />
-                ))}
+                {viewMode === 'map' ? (
+                  <Skeleton className="h-[500px] w-full" />
+                ) : (
+                  Array(10).fill(0).map((_, i) => (
+                    <Skeleton key={i} className="h-32" />
+                  ))
+                )}
               </div>
             ) : plots.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Activity className="w-12 h-12 mx-auto mb-4 opacity-30" />
                 <p>Nenhum talhão encontrado</p>
               </div>
+            ) : viewMode === 'map' ? (
+              <Suspense fallback={<Skeleton className="h-[500px] w-full" />}>
+                <PlotMapView
+                  plots={filteredPlots}
+                  farmCenter={selectedFarm?.coordinates ? {
+                    lat: selectedFarm.coordinates.lat,
+                    lng: selectedFarm.coordinates.lng
+                  } : undefined}
+                  onPlotClick={handlePlotClick}
+                  className="h-[500px]"
+                />
+              </Suspense>
             ) : (
               <div className={cn(
                 viewMode === 'grid' 
                   ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3"
                   : "flex flex-col gap-2"
               )}>
-                {plots.map((plot, index) => (
-                  <div key={plot.id} className="animate-fade-in" style={{ animationDelay: `${index * 15}ms` }}>
-                    <PlotCard plot={plot} onClick={() => handlePlotClick(plot)} />
+                {filteredPlots.length === 0 ? (
+                  <div className="col-span-full text-center py-8 text-muted-foreground">
+                    Nenhum talhão encontrado com os filtros aplicados
                   </div>
-                ))}
+                ) : (
+                  filteredPlots.map((plot, index) => (
+                    <div key={plot.id} className="animate-fade-in" style={{ animationDelay: `${index * 15}ms` }}>
+                      <PlotCard plot={plot} onClick={() => handlePlotClick(plot)} />
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </div>

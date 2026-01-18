@@ -103,7 +103,7 @@ const initialEditForm: EditFormData = {
 // Role labels
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Proprietário',
-  executive: 'Executivo',
+  manager: 'Gerente',
   agronomist: 'Agrônomo',
   operator: 'Operador',
   viewer: 'Visualizador',
@@ -118,7 +118,7 @@ const getRoleLabel = (role?: Role | string): string => {
 const getRoleColor = (slug?: string): string => {
   switch (slug) {
     case 'owner': return 'bg-purple-500/10 text-purple-500';
-    case 'executive': return 'bg-blue-500/10 text-blue-500';
+    case 'manager': return 'bg-blue-500/10 text-blue-500';
     case 'agronomist': return 'bg-green-500/10 text-green-500';
     case 'operator': return 'bg-yellow-500/10 text-yellow-600';
     case 'viewer': return 'bg-gray-500/10 text-gray-500';

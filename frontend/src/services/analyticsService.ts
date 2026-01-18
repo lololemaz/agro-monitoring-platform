@@ -112,6 +112,16 @@ export const analyticsService = {
   },
 
   /**
+   * Generate snapshots from sensor data
+   */
+  async generateSnapshots(farmId?: string): Promise<PlotProductionSnapshot[]> {
+    const response = await api.post<PlotProductionSnapshot[]>('/analytics/generate', null, {
+      params: farmId ? { farm_id: farmId } : undefined,
+    });
+    return response.data;
+  },
+
+  /**
    * Get production analytics overview
    */
   async getProductionAnalytics(farmId?: string): Promise<{

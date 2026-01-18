@@ -69,7 +69,7 @@ export const plotsService = {
    * Update plot
    */
   async updatePlot(id: string, data: PlotUpdate): Promise<Plot> {
-    const response = await api.put<Plot>(`/plots/${id}`, data);
+    const response = await api.patch<Plot>(`/plots/${id}`, data);
     return response.data;
   },
 
