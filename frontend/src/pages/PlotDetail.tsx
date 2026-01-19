@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { usePlotDetail } from "@/hooks/usePlotDetail";
+import { usePlotDetail, TimePeriod, TIME_PERIOD_OPTIONS } from "@/hooks/usePlotDetail";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { MetricChart } from "@/components/MetricChart";
@@ -26,6 +26,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ChevronLeft,
   Droplets,
   Thermometer,
@@ -39,6 +46,7 @@ import {
   Target,
   TrendingUp,
   RefreshCw,
+  Timer,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -56,7 +64,8 @@ interface LocalNote {
 export default function PlotDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { plot, soilReadings, visionData, sensors, isLoading, refresh } = usePlotDetail(id);
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('1h');
+  const { plot, soilReadings, visionData, sensors, isLoading, refresh } = usePlotDetail(id, timePeriod);
   
   const [activeMetric, setActiveMetric] = useState<MetricTab>('moisture');
   const [noteText, setNoteText] = useState("");
@@ -163,6 +172,21 @@ export default function PlotDetail() {
             </Breadcrumb>
 
             <div className="ml-auto flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Timer className="w-4 h-4 text-muted-foreground" />
+                <Select value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)}>
+                  <SelectTrigger className="w-[140px] h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_PERIOD_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button variant="outline" size="icon" onClick={refresh}>
                 <RefreshCw className="w-4 h-4" />
               </Button>
@@ -291,31 +315,54 @@ export default function PlotDetail() {
         {chartData.length > 0 && (
           <div className="bg-card rounded-lg border p-4 md:p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-              <h2 className="font-semibold text-lg">Leituras Historicas</h2>
+              <div>
+                <h2 className="font-semibold text-lg">Leituras Historicas</h2>
+                <p className="text-sm text-muted-foreground">
+                  {TIME_PERIOD_OPTIONS.find(o => o.value === timePeriod)?.label} • {soilReadings.length} leituras
+                </p>
+              </div>
             </div>
 
             <Tabs value={activeMetric} onValueChange={(v) => setActiveMetric(v as MetricTab)}>
-              <TabsList className="w-full md:w-auto flex flex-wrap h-auto gap-1 mb-4 bg-muted/50 p-1">
-                <TabsTrigger value="moisture" className="flex items-center gap-1.5">
+              <TabsList className="w-full md:w-auto flex flex-wrap h-auto gap-2 mb-4 bg-muted p-1.5 rounded-lg">
+                <TabsTrigger 
+                  value="moisture" 
+                  className="flex items-center gap-1.5 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+                >
                   <Droplets className="w-4 h-4" />
                   <span className="hidden sm:inline">Umidade</span>
                 </TabsTrigger>
-                <TabsTrigger value="temperature" className="flex items-center gap-1.5">
+                <TabsTrigger 
+                  value="temperature" 
+                  className="flex items-center gap-1.5 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+                >
                   <Thermometer className="w-4 h-4" />
                   <span className="hidden sm:inline">Temp</span>
                 </TabsTrigger>
-                <TabsTrigger value="ec" className="flex items-center gap-1.5">
+                <TabsTrigger 
+                  value="ec" 
+                  className="flex items-center gap-1.5 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+                >
                   <Zap className="w-4 h-4" />
                   <span className="hidden sm:inline">CE</span>
                 </TabsTrigger>
-                <TabsTrigger value="nitrogen" className="flex items-center gap-1.5">
-                  <span className="font-bold text-chart-nitrogen">N</span>
+                <TabsTrigger 
+                  value="nitrogen" 
+                  className="flex items-center gap-1.5 px-4 py-2 data-[state=active]:bg-chart-nitrogen data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                >
+                  <span className="font-bold">N</span>
                 </TabsTrigger>
-                <TabsTrigger value="phosphorus" className="flex items-center gap-1.5">
-                  <span className="font-bold text-chart-phosphorus">P</span>
+                <TabsTrigger 
+                  value="phosphorus" 
+                  className="flex items-center gap-1.5 px-4 py-2 data-[state=active]:bg-chart-phosphorus data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                >
+                  <span className="font-bold">P</span>
                 </TabsTrigger>
-                <TabsTrigger value="potassium" className="flex items-center gap-1.5">
-                  <span className="font-bold text-chart-potassium">K</span>
+                <TabsTrigger 
+                  value="potassium" 
+                  className="flex items-center gap-1.5 px-4 py-2 data-[state=active]:bg-chart-potassium data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                >
+                  <span className="font-bold">K</span>
                 </TabsTrigger>
               </TabsList>
 

@@ -6,6 +6,37 @@ import type { Sensor } from '@/types/sensor';
 
 const AUTO_REFRESH_INTERVAL = 30000; // 30 segundos
 
+export type TimePeriod = '10m' | '30m' | '1h' | '6h' | '24h' | '7d';
+
+export const TIME_PERIOD_OPTIONS: { value: TimePeriod; label: string }[] = [
+  { value: '10m', label: '10 minutos' },
+  { value: '30m', label: '30 minutos' },
+  { value: '1h', label: '1 hora' },
+  { value: '6h', label: '6 horas' },
+  { value: '24h', label: '24 horas' },
+  { value: '7d', label: '7 dias' },
+];
+
+function getStartTimeFromPeriod(period: TimePeriod): string {
+  const now = new Date();
+  switch (period) {
+    case '10m':
+      return new Date(now.getTime() - 10 * 60 * 1000).toISOString();
+    case '30m':
+      return new Date(now.getTime() - 30 * 60 * 1000).toISOString();
+    case '1h':
+      return new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+    case '6h':
+      return new Date(now.getTime() - 6 * 60 * 60 * 1000).toISOString();
+    case '24h':
+      return new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    case '7d':
+      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    default:
+      return new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+  }
+}
+
 interface UsePlotDetailResult {
   plot: PlotWithReadings | null;
   soilReadings: SoilReading[];
@@ -16,7 +47,7 @@ interface UsePlotDetailResult {
   refresh: () => Promise<void>;
 }
 
-export function usePlotDetail(plotId: string | undefined): UsePlotDetailResult {
+export function usePlotDetail(plotId: string | undefined, period: TimePeriod = '24h'): UsePlotDetailResult {
   const [plot, setPlot] = useState<PlotWithReadings | null>(null);
   const [soilReadings, setSoilReadings] = useState<SoilReading[]>([]);
   const [visionData, setVisionData] = useState<VisionData[]>([]);
@@ -38,10 +69,12 @@ export function usePlotDetail(plotId: string | undefined): UsePlotDetailResult {
     setError(null);
 
     try {
+      const startTime = getStartTimeFromPeriod(period);
+      
       const [plotData, soilData, visionDataResult, sensorsData] = await Promise.all([
         plotsService.getPlot(plotId),
-        plotsService.getSoilReadings(plotId, { limit: 100 }),
-        plotsService.getVisionData(plotId, { limit: 20 }),
+        plotsService.getSoilReadings(plotId, { start_time: startTime, limit: 500 }),
+        plotsService.getVisionData(plotId, { start_time: startTime, limit: 100 }),
         sensorsService.getSensors({ plot_id: plotId }),
       ]);
 
@@ -67,7 +100,7 @@ export function usePlotDetail(plotId: string | undefined): UsePlotDetailResult {
     } finally {
       setIsLoading(false);
     }
-  }, [plotId]);
+  }, [plotId, period]);
 
   useEffect(() => {
     loadData();
