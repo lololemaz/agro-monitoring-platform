@@ -1,5 +1,5 @@
 # Docker Compose para Produção
-# Inicia: Database + Backend API + Frontend (nginx)
+# Acesso via Nginx na porta 80 (único ponto de entrada)
 
 services:
   # ===================================
@@ -36,9 +36,10 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       DEBUG: "false"
       ENVIRONMENT: production
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:80,http://localhost:8080}
-    ports:
-      - "${API_PORT:-8000}:8000"
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    # Não expõe porta - acesso apenas via nginx
+    expose:
+      - "8000"
     depends_on:
       db:
         condition: service_healthy
@@ -61,10 +62,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api}
+        VITE_API_URL: /api
     container_name: agro_frontend
-    ports:
-      - "${FRONTEND_PORT:-80}:80"
+    # Não expõe porta - acesso apenas via nginx
+    expose:
+      - "80"
     depends_on:
       - api
     restart: unless-stopped
@@ -72,15 +74,15 @@ services:
       - agro_network
 
   # ===================================
-  # Nginx Reverse Proxy (opcional)
+  # Nginx - Proxy Reverso (único ponto de entrada)
   # ===================================
   nginx:
     image: nginx:alpine
-    container_name: agro_proxy
+    container_name: agro_nginx
     ports:
-      - "${PROXY_PORT:-8080}:80"
+      - "80:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - api
       - frontend

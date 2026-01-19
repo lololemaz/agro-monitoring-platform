@@ -9,6 +9,7 @@ Plataforma de monitoramento agrícola com backend FastAPI e frontend React.
 - [Início Rápido](#-início-rápido)
 - [Desenvolvimento](#-desenvolvimento)
 - [Produção](#-produção)
+- [Deploy em VM (Azure/AWS/GCP)](#-deploy-em-vm)
 - [Estrutura do Projeto](#-estrutura-do-projeto)
 - [Variáveis de Ambiente](#-variáveis-de-ambiente)
 - [Comandos Úteis](#-comandos-úteis)
@@ -28,21 +29,23 @@ Plataforma de monitoramento agrícola com backend FastAPI e frontend React.
 
 | Serviço | Porta | URL | Credenciais |
 |---------|-------|-----|-------------|
-| Frontend (Vite) | 5173 | http://localhost:5173 | - |
-| Backend API | 8000 | http://localhost:8000 | - |
-| Swagger Docs | 8000 | http://localhost:8000/docs | - |
-| ReDoc | 8000 | http://localhost:8000/redoc | - |
-| PostgreSQL | 5432 | localhost:5432 | `postgres` / `postgres` |
+| Nginx (Proxy) | 80 | http://localhost | - |
+| PostgreSQL | 5435 | localhost:5435 | `postgres` / `postgres` |
 | pgAdmin | 5050 | http://localhost:5050 | `admin@admin.com` / `admin` |
+
+> **Nota:** Em desenvolvimento, acesse tudo via porta 80 (nginx). API e Frontend não expõem portas diretamente.
 
 ### Modo Produção (`docker-compose.yml`)
 
 | Serviço | Porta | URL | Descrição |
 |---------|-------|-----|-----------|
-| Frontend (nginx) | 80 | http://localhost | App React buildado |
-| Reverse Proxy | 8080 | http://localhost:8080 | API + Frontend unificados |
-| Backend API | 8000 | http://localhost:8000 | FastAPI (interno) |
-| PostgreSQL | - | interno | Não exposto externamente |
+| Nginx (Proxy) | 80 | http://seu-ip | Único ponto de entrada |
+
+**URLs disponíveis via Nginx:**
+- `http://seu-ip/` → Frontend React
+- `http://seu-ip/api` → Backend API
+- `http://seu-ip/docs` → Swagger Docs
+- `http://seu-ip/redoc` → ReDoc
 
 ---
 
@@ -66,12 +69,22 @@ cp .env.example .env
 
 **Para desenvolvimento:**
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.dev.yml up --build -d
 ```
 
 **Para produção:**
 ```bash
-docker compose up --build
+docker compose up --build -d
+```
+
+### 4. Criar usuário administrador
+
+```bash
+# Desenvolvimento
+docker compose -f docker-compose.dev.yml exec api python -m app.cli "admin@example.com" "senha123" "Admin"
+
+# Produção
+docker compose exec api python -m app.cli "admin@example.com" "senha123" "Admin"
 ```
 
 ---
@@ -81,8 +94,10 @@ docker compose up --build
 O ambiente de desenvolvimento inclui hot reload para frontend e backend, além do pgAdmin para gerenciamento do banco de dados.
 
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.dev.yml up --build -d
 ```
+
+**Acesse:** http://localhost
 
 ### Hot Reload
 
@@ -117,54 +132,101 @@ docker compose -f docker-compose.dev.yml up --build
 > ⚠️ **IMPORTANTE:** Use `db` como host, **NÃO use** `localhost`!  
 > O pgAdmin roda dentro de um container Docker e `db` é o nome do serviço do banco na rede interna.
 
-### Executar em background
-
-```bash
-docker compose -f docker-compose.dev.yml up -d --build
-```
-
-### Ver logs
-
-```bash
-# Todos os serviços
-docker compose -f docker-compose.dev.yml logs -f
-
-# Serviço específico
-docker compose -f docker-compose.dev.yml logs -f api
-docker compose -f docker-compose.dev.yml logs -f frontend
-```
-
 ---
 
 ## 🏭 Produção
 
-O ambiente de produção utiliza builds otimizados e nginx como reverse proxy.
+O ambiente de produção utiliza builds otimizados e nginx como proxy reverso.
 
 ```bash
 docker compose up --build -d
 ```
-
-> 📌 Veja o [Mapeamento de Portas](#-mapeamento-de-portas) para URLs de acesso.
 
 ### Arquitetura de Produção
 
 ```
                     ┌─────────────┐
                     │   Cliente   │
+                    │  (Browser)  │
                     └──────┬──────┘
                            │
+                           │ :80
                     ┌──────▼──────┐
-                    │    Nginx    │ :8080
+                    │    Nginx    │
                     │   (Proxy)   │
                     └──────┬──────┘
                            │
            ┌───────────────┼───────────────┐
            │               │               │
+           │ /             │ /api          │
     ┌──────▼──────┐ ┌──────▼──────┐ ┌──────▼──────┐
     │  Frontend   │ │   Backend   │ │  Database   │
-    │   (nginx)   │ │  (FastAPI)  │ │(TimescaleDB)│
+    │   (React)   │ │  (FastAPI)  │ │(TimescaleDB)│
+    │    :80      │ │    :8000    │ │    :5432    │
     └─────────────┘ └─────────────┘ └─────────────┘
+           │               │               │
+           └───────────────┴───────────────┘
+                    (rede interna)
 ```
+
+**Vantagens:**
+- ✅ Apenas porta 80 exposta
+- ✅ Sem problemas de CORS
+- ✅ Mais seguro
+- ✅ Fácil de adicionar HTTPS
+
+---
+
+## ☁️ Deploy em VM
+
+### Azure / AWS / GCP
+
+1. **Provisione uma VM** com Ubuntu 22.04+ e Docker instalado
+
+2. **Clone o repositório na VM:**
+```bash
+git clone <url-do-repositorio>
+cd agro-monitoring-platform
+```
+
+3. **Configure as variáveis de ambiente:**
+```bash
+cp .env.example .env
+nano .env
+```
+
+Ajuste o `.env`:
+```bash
+# IMPORTANTE: Use uma chave segura em produção!
+SECRET_KEY=sua-chave-segura-aqui-minimo-32-caracteres
+
+# Credenciais do banco (altere em produção!)
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=senha-forte-aqui
+```
+
+4. **Inicie os serviços:**
+```bash
+docker compose up --build -d
+```
+
+5. **Crie o usuário admin:**
+```bash
+docker compose exec api python -m app.cli "admin@empresa.com" "senha-forte" "Admin"
+```
+
+6. **Configure o Firewall (NSG/Security Group):**
+   - ✅ Libere a porta **80** (HTTP)
+   - ✅ Libere a porta **443** (HTTPS, se usar)
+   - ❌ **NÃO** libere 8000, 5432, etc.
+
+7. **Acesse:**
+   - Frontend: `http://IP-DA-VM/`
+   - API Docs: `http://IP-DA-VM/docs`
+
+### Adicionar HTTPS (Recomendado)
+
+Para HTTPS com Let's Encrypt, use um proxy como Traefik ou Caddy, ou configure o Nginx com certbot.
 
 ---
 
@@ -196,9 +258,15 @@ agro-monitoring-platform/
 │   ├── Dockerfile.dev         # Build de desenvolvimento
 │   └── package.json           # Dependências Node.js
 │
+├── mqtt-bridge/                # Bridge MQTT → Database
+│   ├── main.py                # Script principal
+│   ├── certs/                 # Certificados TLS
+│   └── Dockerfile
+│
 ├── docker-compose.yml          # Compose para produção
 ├── docker-compose.dev.yml      # Compose para desenvolvimento
-├── nginx.conf                  # Config do reverse proxy
+├── nginx.conf                  # Config nginx (desenvolvimento)
+├── nginx.prod.conf             # Config nginx (produção)
 └── README.md                   # Este arquivo
 ```
 
@@ -215,31 +283,18 @@ Crie um arquivo `.env` na raiz do projeto:
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=mango_farm_monitor
-POSTGRES_PORT=5432
 
 # ===================================
 # Backend API Configuration
 # ===================================
-SECRET_KEY=sua-chave-secreta-aqui
-API_PORT=8000
-DEBUG=false
-ENVIRONMENT=production
+SECRET_KEY=sua-chave-secreta-aqui-minimo-32-caracteres
 
 # ===================================
-# Frontend Configuration
+# MQTT Bridge Configuration
 # ===================================
-VITE_API_URL=http://localhost:8000/api
-FRONTEND_PORT=80
-
-# ===================================
-# Proxy Configuration
-# ===================================
-PROXY_PORT=8080
-
-# ===================================
-# CORS Origins
-# ===================================
-CORS_ORIGINS=http://localhost,http://localhost:80,http://localhost:8080,http://localhost:3000,http://localhost:5173
+MQTT_BROKER=seu-broker-mqtt.com
+MQTT_PORT=8883
+MQTT_TOPIC=application/+/device/+/event/up
 ```
 
 ---
@@ -250,12 +305,12 @@ CORS_ORIGINS=http://localhost,http://localhost:80,http://localhost:8080,http://l
 
 ```bash
 # Iniciar serviços (desenvolvimento)
-docker compose -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.dev.yml up --build -d
 
 # Iniciar serviços (produção)
 docker compose up --build -d
 
-# Cria a conta do usuario superadmin
+# Criar usuário superadmin
 docker compose exec api python -m app.cli "admin@example.com" "senha123" "Admin"
 
 # Parar serviços
@@ -265,19 +320,20 @@ docker compose -f docker-compose.dev.yml down
 # Parar e remover volumes (limpar banco de dados)
 docker compose down -v
 
-# Rebuild de um serviço específico
-docker compose -f docker-compose.dev.yml up --build api
-docker compose -f docker-compose.dev.yml up --build frontend
-
 # Ver status dos containers
 docker compose ps
+
+# Ver logs
+docker compose logs -f
+docker compose logs -f api
+docker compose logs -f nginx
 ```
 
 ### Migrações do Banco de Dados
 
 ```bash
 # Acessar container da API
-docker compose -f docker-compose.dev.yml exec api bash
+docker compose exec api bash
 
 # Executar migrações (dentro do container)
 alembic upgrade head
@@ -289,25 +345,11 @@ alembic revision --autogenerate -m "descricao da migracao"
 ### Acessar o Banco de Dados
 
 ```bash
+# Via psql (produção)
+docker compose exec db psql -U postgres -d mango_farm_monitor
+
 # Via psql (desenvolvimento)
 docker compose -f docker-compose.dev.yml exec db psql -U postgres -d mango_farm_monitor
-
-# Ou conecte com qualquer cliente PostgreSQL em localhost:5432
-```
-
-### Logs e Debug
-
-```bash
-# Ver logs em tempo real
-docker compose -f docker-compose.dev.yml logs -f
-
-# Ver logs de um serviço
-docker compose -f docker-compose.dev.yml logs -f api
-docker compose -f docker-compose.dev.yml logs -f frontend
-docker compose -f docker-compose.dev.yml logs -f db
-
-# Inspecionar container
-docker inspect agro_api_dev
 ```
 
 ---
@@ -318,8 +360,8 @@ docker inspect agro_api_dev
 
 ```bash
 # Verificar processos usando a porta
+sudo lsof -i :80
 sudo lsof -i :8000
-sudo lsof -i :5173
 
 # Matar processo
 sudo kill -9 <PID>
@@ -336,21 +378,35 @@ sudo chown -R $USER:$USER ./backend ./frontend
 
 ```bash
 # Para todos os containers e remove volumes
-docker compose -f docker-compose.dev.yml down -v
+docker compose down -v
 
 # Remove imagens órfãs
 docker image prune -a
 
 # Rebuild completo
-docker compose -f docker-compose.dev.yml up --build --force-recreate
+docker compose up --build --force-recreate -d
 ```
 
 ### Container não inicia
 
 ```bash
 # Ver logs do container
-docker compose -f docker-compose.dev.yml logs api
+docker compose logs api
+docker compose logs nginx
 
 # Verificar status
-docker compose -f docker-compose.dev.yml ps -a
+docker compose ps -a
+```
+
+### Nginx retorna 502 Bad Gateway
+
+```bash
+# Verificar se API está rodando
+docker compose ps
+
+# Ver logs da API
+docker compose logs api
+
+# Verificar se API responde internamente
+docker compose exec nginx wget -qO- http://api:8000/api/health || echo "API não responde"
 ```
