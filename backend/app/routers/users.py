@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import CurrentOrgOwner, CurrentUser
 from app.database import get_db
+from app.schemas.auth import PasswordReset
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.services.user_service import UserService
 
@@ -29,7 +30,8 @@ async def list_users(
         )
 
     user_service = UserService(db)
-    return user_service.get_users_by_organization(current_user.organization_id)
+    users = user_service.get_users_by_organization(current_user.organization_id)
+    return [UserResponse.from_user(u) for u in users]
 
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -58,11 +60,12 @@ async def create_user(
             detail="Email já está em uso nesta organização",
         )
 
-    return user_service.create_user(
+    user = user_service.create_user(
         user_data,
         organization_id=current_user.organization_id,
         created_by=current_user.id,
     )
+    return UserResponse.from_user(user)
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -77,7 +80,7 @@ async def get_user(
     Owners podem ver dados de qualquer usuário da organização.
     """
     user_service = UserService(db)
-    user = user_service.get_by_id(user_id)
+    user = user_service.get_by_id_with_roles(user_id)
 
     if not user:
         raise HTTPException(
@@ -99,7 +102,7 @@ async def get_user(
                 detail="Usuário não pertence à sua organização",
             )
 
-    return user
+    return UserResponse.from_user(user)
 
 
 @router.patch("/{user_id}", response_model=UserResponse)
@@ -143,7 +146,16 @@ async def update_user(
             detail="Você não pode alterar seu próprio status",
         )
 
-    return user_service.update_user(user, user_data)
+    # Extrai role_id do payload
+    role_id = user_data.role_id
+    
+    updated_user = user_service.update_user(
+        user, 
+        user_data, 
+        role_id=role_id,
+        assigned_by=current_user.id if role_id else None,
+    )
+    return UserResponse.from_user(updated_user)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -182,3 +194,54 @@ async def delete_user(
             )
 
     user_service.delete_user(user)
+
+
+@router.post("/{user_id}/reset-password")
+async def reset_user_password(
+    user_id: UUID,
+    password_data: PasswordReset,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+):
+    """Reseta a senha de um usuário.
+
+    - Superusers podem resetar a senha de qualquer usuário
+    - Owners podem resetar a senha de usuários da sua organização
+    - Usuários comuns não podem resetar senha de outros
+    """
+    user_service = UserService(db)
+    user = user_service.get_by_id(user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuário não encontrado",
+        )
+
+    # Verifica permissão
+    can_reset = False
+    
+    # Superuser pode resetar qualquer senha
+    if current_user.is_superuser:
+        can_reset = True
+    # Owner pode resetar senha de usuários da mesma organização
+    elif current_user.is_org_owner:
+        if user.organization_id == current_user.organization_id:
+            can_reset = True
+    
+    if not can_reset:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Sem permissão para resetar a senha deste usuário",
+        )
+
+    # Valida tamanho mínimo da senha
+    if len(password_data.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A senha deve ter no mínimo 8 caracteres",
+        )
+
+    user_service.change_password(user, password_data.new_password)
+
+    return {"message": "Senha redefinida com sucesso"}

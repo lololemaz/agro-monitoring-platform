@@ -28,3 +28,9 @@ class PasswordChange(BaseModel):
 
     current_password: str
     new_password: str
+
+
+class PasswordReset(BaseModel):
+    """Requisição de reset de senha (por admin/owner)."""
+
+    new_password: str

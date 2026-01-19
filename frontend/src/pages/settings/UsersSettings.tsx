@@ -109,13 +109,15 @@ const ROLE_LABELS: Record<string, string> = {
   viewer: 'Visualizador',
 };
 
-const getRoleLabel = (role?: Role | string): string => {
+const getRoleLabel = (role?: Role | string, isOrgOwner?: boolean): string => {
+  if (isOrgOwner) return 'Proprietário';
   if (!role) return 'Sem cargo';
   if (typeof role === 'string') return ROLE_LABELS[role] || role;
   return ROLE_LABELS[role.slug] || role.name;
 };
 
-const getRoleColor = (slug?: string): string => {
+const getRoleColor = (slug?: string, isOrgOwner?: boolean): string => {
+  if (isOrgOwner) return 'bg-purple-500/10 text-purple-500';
   switch (slug) {
     case 'owner': return 'bg-purple-500/10 text-purple-500';
     case 'manager': return 'bg-blue-500/10 text-blue-500';
@@ -124,6 +126,26 @@ const getRoleColor = (slug?: string): string => {
     case 'viewer': return 'bg-gray-500/10 text-gray-500';
     default: return 'bg-muted text-muted-foreground';
   }
+};
+
+/**
+ * Format phone: (00) 00000-0000 or (00) 0000-0000
+ */
+const formatPhone = (value: string): string => {
+  const numbers = value.replace(/\D/g, '');
+  if (numbers.length <= 2) return numbers.length ? `(${numbers}` : '';
+  if (numbers.length <= 6) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+  if (numbers.length <= 10) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`;
+  return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+};
+
+/**
+ * Validate phone (10 or 11 digits)
+ */
+const isValidPhone = (value: string): boolean => {
+  const numbers = value.replace(/\D/g, '');
+  if (numbers.length === 0) return true; // Empty is valid (optional field)
+  return numbers.length === 10 || numbers.length === 11;
 };
 
 export default function UsersSettings() {
@@ -158,7 +180,7 @@ export default function UsersSettings() {
         usersService.getRoles(),
       ]);
       setUsers(usersData);
-      setRoles(rolesData.filter(r => !r.is_system_role)); // Only show assignable roles
+      setRoles(rolesData); // Show all roles (system roles are the assignable ones)
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -194,12 +216,26 @@ export default function UsersSettings() {
     if (createForm.password.length < 8) return 'Senha deve ter no mínimo 8 caracteres';
     if (!createForm.first_name.trim()) return 'Nome é obrigatório';
     if (!createForm.last_name.trim()) return 'Sobrenome é obrigatório';
+    if (createForm.phone && !isValidPhone(createForm.phone)) return 'Telefone deve ter 10 ou 11 dígitos';
     return null;
+  };
+
+  const handlePhoneChange = (value: string, isEdit: boolean = false) => {
+    const formatted = formatPhone(value);
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 11) {
+      if (isEdit) {
+        setEditForm({ ...editForm, phone: formatted });
+      } else {
+        setCreateForm({ ...createForm, phone: formatted });
+      }
+    }
   };
 
   const validateEditForm = (): string | null => {
     if (!editForm.first_name.trim()) return 'Nome é obrigatório';
     if (!editForm.last_name.trim()) return 'Sobrenome é obrigatório';
+    if (editForm.phone && !isValidPhone(editForm.phone)) return 'Telefone deve ter 10 ou 11 dígitos';
     return null;
   };
 
@@ -215,7 +251,7 @@ export default function UsersSettings() {
       password: createForm.password,
       first_name: createForm.first_name.trim(),
       last_name: createForm.last_name.trim(),
-      phone: createForm.phone.trim() || undefined,
+      phone: createForm.phone ? createForm.phone.replace(/\D/g, '') : undefined,
       role_id: createForm.role_id || undefined,
     };
 
@@ -245,9 +281,9 @@ export default function UsersSettings() {
     const payload: UserUpdate = {
       first_name: editForm.first_name.trim(),
       last_name: editForm.last_name.trim(),
-      phone: editForm.phone.trim() || undefined,
+      phone: editForm.phone ? editForm.phone.replace(/\D/g, '') : undefined,
       is_active: editForm.is_active,
-      role_id: editForm.role_id || undefined,
+      role_id: selectedUser?.is_org_owner ? undefined : (editForm.role_id || undefined),
     };
 
     setIsSaving(true);
@@ -317,7 +353,7 @@ export default function UsersSettings() {
     setEditForm({
       first_name: user.first_name || '',
       last_name: user.last_name || '',
-      phone: user.phone || '',
+      phone: user.phone ? formatPhone(user.phone) : '',
       role_id: userRole?.id || '',
       is_active: user.is_active,
     });
@@ -449,6 +485,7 @@ export default function UsersSettings() {
               filteredUsers.map((user) => {
                 const role = getUserRole(user);
                 const isCurrentUser = user.id === currentUser?.id;
+                const isOwner = user.is_org_owner;
                 
                 return (
                   <TableRow key={user.id}>
@@ -471,9 +508,9 @@ export default function UsersSettings() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className={getRoleColor(role?.slug)}>
+                      <Badge variant="secondary" className={getRoleColor(role?.slug, isOwner)}>
                         <Shield className="w-3 h-3 mr-1" />
-                        {getRoleLabel(role)}
+                        {getRoleLabel(role, isOwner)}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -582,7 +619,7 @@ export default function UsersSettings() {
                 <Input
                   id="phone"
                   value={createForm.phone}
-                  onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+                  onChange={(e) => handlePhoneChange(e.target.value, false)}
                   placeholder="(00) 00000-0000"
                 />
               </div>
@@ -658,7 +695,7 @@ export default function UsersSettings() {
                 <Input
                   id="edit-phone"
                   value={editForm.phone}
-                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  onChange={(e) => handlePhoneChange(e.target.value, true)}
                   placeholder="(00) 00000-0000"
                 />
               </div>
@@ -667,6 +704,7 @@ export default function UsersSettings() {
                 <Select 
                   value={editForm.role_id || '__none__'} 
                   onValueChange={(v) => setEditForm({ ...editForm, role_id: v === '__none__' ? '' : v })}
+                  disabled={selectedUser?.is_org_owner}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
@@ -680,6 +718,11 @@ export default function UsersSettings() {
                     ))}
                   </SelectContent>
                 </Select>
+                {selectedUser?.is_org_owner && (
+                  <p className="text-xs text-muted-foreground">
+                    Proprietário não pode ter o cargo alterado
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex items-center justify-between py-2">

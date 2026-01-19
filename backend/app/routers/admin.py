@@ -22,6 +22,7 @@ from app.schemas.sensor_type import (
     SensorTypeResponse,
     SensorTypeUpdate,
 )
+from app.schemas.auth import PasswordReset
 from app.schemas.user import SuperUserCreate, UserResponse
 from app.services.organization_service import OrganizationService
 from app.services.sensor_type_service import SensorTypeService
@@ -491,3 +492,36 @@ async def create_superuser(
         )
 
     return user_service.create_superuser(user_data)
+
+
+@router.post("/users/{user_id}/reset-password")
+async def admin_reset_user_password(
+    user_id: UUID,
+    password_data: PasswordReset,
+    current_user: CurrentSuperuser,
+    db: Session = Depends(get_db),
+):
+    """Reseta a senha de qualquer usuário (incluindo owners).
+
+    Apenas superusers podem usar este endpoint.
+    Permite resetar a senha de owners de organizações.
+    """
+    user_service = UserService(db)
+    user = user_service.get_by_id(user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuário não encontrado",
+        )
+
+    # Valida tamanho mínimo da senha
+    if len(password_data.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A senha deve ter no mínimo 8 caracteres",
+        )
+
+    user_service.change_password(user, password_data.new_password)
+
+    return {"message": "Senha redefinida com sucesso"}

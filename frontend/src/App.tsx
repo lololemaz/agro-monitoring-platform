@@ -32,6 +32,7 @@ import {
 // Settings Pages
 import {
   SettingsLayout,
+  ProfileSettings,
   FarmsSettings,
   PlotsSettings,
   UsersSettings,
@@ -90,6 +91,7 @@ const App = () => (
               {/* Settings routes */}
               <Route path="/settings" element={<SettingsLayout />}>
                 <Route index element={<Navigate to="/settings" replace />} />
+                <Route path="profile" element={<ProfileSettings />} />
                 <Route path="farms" element={<FarmsSettings />} />
                 <Route path="plots" element={<PlotsSettings />} />
                 <Route path="users" element={<UsersSettings />} />

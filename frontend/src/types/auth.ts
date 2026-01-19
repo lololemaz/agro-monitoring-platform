@@ -13,6 +13,7 @@ export interface User {
   is_active: boolean;
   is_email_verified: boolean;
   is_superuser: boolean;
+  is_org_owner: boolean;
   last_login_at: string | null;
   created_at: string;
   updated_at: string;
@@ -53,7 +54,7 @@ export interface LoginResponse {
 }
 
 export interface ChangePasswordRequest {
-  old_password: string;
+  current_password: string;
   new_password: string;
 }
 

@@ -206,6 +206,15 @@ export const adminService = {
     });
     return response.data;
   },
+
+  /**
+   * Reset any user's password (superadmin only)
+   */
+  async resetUserPassword(userId: string, newPassword: string): Promise<void> {
+    await api.post(`/admin/users/${userId}/reset-password`, {
+      new_password: newPassword,
+    });
+  },
 };
 
 export default adminService;

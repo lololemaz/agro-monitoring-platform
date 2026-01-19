@@ -3,10 +3,10 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.security import get_password_hash, verify_password
-from app.models.organization import User
+from app.models.organization import User, UserRole, Role
 from app.schemas.user import UserCreate, UserUpdate, SuperUserCreate
 
 
@@ -19,6 +19,15 @@ class UserService:
     def get_by_id(self, user_id: UUID) -> User | None:
         """Busca usuário por ID."""
         return self.db.query(User).filter(
+            User.id == user_id,
+            User.deleted_at.is_(None),
+        ).first()
+
+    def get_by_id_with_roles(self, user_id: UUID) -> User | None:
+        """Busca usuário por ID com roles carregados."""
+        return self.db.query(User).options(
+            joinedload(User.roles).joinedload(UserRole.role)
+        ).filter(
             User.id == user_id,
             User.deleted_at.is_(None),
         ).first()
@@ -44,8 +53,10 @@ class UserService:
         ).first()
 
     def get_users_by_organization(self, organization_id: UUID) -> list[User]:
-        """Lista usuários de uma organização."""
-        return self.db.query(User).filter(
+        """Lista usuários de uma organização com seus roles."""
+        return self.db.query(User).options(
+            joinedload(User.roles).joinedload(UserRole.role)
+        ).filter(
             User.organization_id == organization_id,
             User.deleted_at.is_(None),
         ).all()
@@ -81,6 +92,17 @@ class UserService:
             is_org_owner=user_data.is_org_owner,
         )
         self.db.add(user)
+        self.db.flush()  # Para obter o ID do usuário
+        
+        # Atribui role se informado
+        if user_data.role_id:
+            user_role = UserRole(
+                user_id=user.id,
+                role_id=user_data.role_id,
+                assigned_by=created_by,
+            )
+            self.db.add(user_role)
+        
         self.db.commit()
         self.db.refresh(user)
         return user
@@ -101,11 +123,30 @@ class UserService:
         self.db.refresh(user)
         return user
 
-    def update_user(self, user: User, user_data: UserUpdate) -> User:
+    def update_user(self, user: User, user_data: UserUpdate, role_id: UUID | None = None, assigned_by: UUID | None = None) -> User:
         """Atualiza dados do usuário."""
         update_data = user_data.model_dump(exclude_unset=True)
+        
+        # Remove role_id do update_data se existir (tratamos separadamente)
+        update_data.pop('role_id', None)
+        
         for field, value in update_data.items():
             setattr(user, field, value)
+        
+        # Atualiza role se informado
+        if role_id is not None:
+            # Remove roles existentes
+            self.db.query(UserRole).filter(UserRole.user_id == user.id).delete()
+            
+            # Adiciona novo role
+            if role_id:  # Se role_id não for vazio/None
+                user_role = UserRole(
+                    user_id=user.id,
+                    role_id=role_id,
+                    assigned_by=assigned_by,
+                )
+                self.db.add(user_role)
+        
         self.db.commit()
         self.db.refresh(user)
         return user

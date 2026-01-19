@@ -39,6 +39,10 @@ class OrganizationUpdate(BaseModel):
     logo_url: str | None = None
     settings: dict | None = None
     is_active: bool | None = None
+    # Dados do owner (opcional)
+    owner_first_name: str | None = None
+    owner_last_name: str | None = None
+    owner_password: str | None = None
 
 
 class OrganizationResponse(OrganizationBase):

@@ -1,8 +1,14 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { Building2, MapPin, Users, ChevronRight } from 'lucide-react';
+import { Building2, MapPin, Users, ChevronRight, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const settingsNav = [
+  {
+    title: 'Meu Perfil',
+    href: '/settings/profile',
+    icon: User,
+    description: 'Edite seus dados e senha',
+  },
   {
     title: 'Fazendas',
     href: '/settings/farms',
