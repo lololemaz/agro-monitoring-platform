@@ -49,15 +49,16 @@ def get_sensor_metadata(session, dev_eui):
     """)
     return session.execute(query, {"dev_eui": dev_eui_upper}).fetchone()
 
-def on_connect(client, userdata, flags, rc):
-    """Callback de connexion MQTT."""
+# --- CALLBACKS (Format API v2) ---
+def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
-        logger.info(f"Connecté avec succès au Broker Azure via TLS")
+        mode = "TLS" if use_tls else "NON-TLS"
+        logger.info(f"Connecté avec succès au Broker ({mode})")
         client.subscribe(MQTT_TOPIC)
         logger.info(f"Abonné au topic : {MQTT_TOPIC}")
     else:
         logger.error(f"Erreur de connexion MQTT, code : {rc}")
-
+        
 def process_message(client, userdata, msg):
     """Traitement et insertion dans les hypertables."""
     session = SessionLocal()
@@ -131,10 +132,12 @@ def process_message(client, userdata, msg):
     finally:
         session.close()
 
-# --- INITIALISATION MQTT ---
-client = mqtt.Client()
+# --- INITIALISATION MQTT (API v2 pour éviter le Warning) ---
+# Note : Si vous utilisez une très vieille version de paho-mqtt (< 2.0), 
+# retirez l'argument CallbackAPIVersion.
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 
-# Configuration TLS (vérifie l'existence des certificats)
+# --- CONFIGURATION TLS OPTIONNELLE ---
 use_tls = True
 cert_files = {
     "CA": CA_CERT_PATH,
@@ -142,48 +145,34 @@ cert_files = {
     "Client Key": CLIENT_KEY_PATH
 }
 
-# Vérifier l'existence des certificats
-missing_certs = []
-for cert_name, cert_path in cert_files.items():
-    if not os.path.exists(cert_path):
-        missing_certs.append(f"{cert_name} ({cert_path})")
-        use_tls = False
+# Vérification des fichiers
+missing_certs = [name for name, path in cert_files.items() if not os.path.exists(path)]
 
-if use_tls:
+if missing_certs:
+    logger.warning(f"Certificats TLS manquants ({', '.join(missing_certs)}).")
+    logger.warning(f"Tentative de connexion SANS TLS sur le port {MQTT_PORT}")
+    use_tls = False
+else:
     try:
-        logger.info("Configuration TLS avec certificats...")
         client.tls_set(
             ca_certs=CA_CERT_PATH,
             certfile=CLIENT_CERT_PATH,
             keyfile=CLIENT_KEY_PATH,
             tls_version=ssl.PROTOCOL_TLSv1_2
         )
-        logger.info("TLS configuré avec succès")
+        logger.info("Configuration TLS chargée avec succès.")
     except Exception as e:
-        logger.error(f"Erreur lors de la configuration TLS : {e}")
-        logger.error("Tentative de connexion sans TLS...")
+        logger.error(f"Erreur lors du chargement TLS : {e}. Tentative sans TLS...")
         use_tls = False
-else:
-    logger.warning("Certificats TLS non trouvés:")
-    for cert_info in missing_certs:
-        logger.warning(f"  - {cert_info}")
-    logger.warning("Le service attendra la configuration des certificats avant de démarrer.")
 
-if not use_tls:
-    logger.critical("Impossible de démarrer sans certificats TLS. Veuillez configurer les certificats dans mqtt-bridge/certs/")
-    logger.critical("Fichiers requis:")
-    logger.critical(f"  - CA Certificate: {CA_CERT_PATH}")
-    logger.critical(f"  - Client Certificate: {CLIENT_CERT_PATH}")
-    logger.critical(f"  - Client Key: {CLIENT_KEY_PATH}")
-    exit(1)
 
 client.on_connect = on_connect
 client.on_message = process_message
 
+# --- DÉMARRAGE ---
 try:
     logger.info("Démarrage du Bridge...")
-    logger.info(f"Connexion au broker: {MQTT_BROKER}:{MQTT_PORT}")
-    logger.info(f"Topic: {MQTT_TOPIC}")
+    logger.info(f"Cible : {MQTT_BROKER}:{MQTT_PORT}")
     client.connect(MQTT_BROKER, MQTT_PORT, 60)
     client.loop_forever()
 except Exception as e:
