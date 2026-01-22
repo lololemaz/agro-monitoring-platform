@@ -130,17 +130,36 @@ export function PlotMapView({ plots, farmCenter, onPlotClick, className }: PlotM
               }}
             >
               <Tooltip direction="top" sticky>
-                <div className="text-sm">
+                <div className="text-sm min-w-[180px]">
                   <p className="font-semibold">{plot.name}</p>
                   {plot.code && <p className="text-xs text-gray-500">{plot.code}</p>}
-                  <p className="text-xs">Area: {plot.area} ha</p>
+                  <p className="text-xs">Área: {plot.area} ha</p>
                   {plot.health_score !== undefined && (
-                    <p className="text-xs">Saude: {plot.health_score}%</p>
+                    <p className="text-xs">Saúde: {plot.health_score}%</p>
                   )}
-                  {plot.current_soil_reading?.moisture !== undefined && (
-                    <p className="text-xs">
-                      Umidade: {Number(plot.current_soil_reading.moisture).toFixed(1)}%
-                    </p>
+                  {plot.current_soil_reading && (
+                    <div className="mt-1 pt-1 border-t border-gray-200 space-y-0.5">
+                      {plot.current_soil_reading.moisture !== undefined && (
+                        <p className="text-xs">
+                          <span className="text-gray-500" title="Umidade do Solo">Umid:</span> {Number(plot.current_soil_reading.moisture).toFixed(1)}%
+                        </p>
+                      )}
+                      {plot.current_soil_reading.temperature !== undefined && (
+                        <p className="text-xs">
+                          <span className="text-gray-500" title="Temperatura">Temp:</span> {Number(plot.current_soil_reading.temperature).toFixed(1)}°C
+                        </p>
+                      )}
+                      {plot.current_soil_reading.ec !== undefined && (
+                        <p className="text-xs">
+                          <span className="text-gray-500" title="Condutividade Elétrica">CE:</span> {Number(plot.current_soil_reading.ec).toFixed(2)} µS/cm
+                        </p>
+                      )}
+                      {plot.current_soil_reading.ph !== undefined && (
+                        <p className="text-xs">
+                          <span className="text-gray-500" title="Potencial Hidrogeniônico">pH:</span> {Number(plot.current_soil_reading.ph).toFixed(1)}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               </Tooltip>
@@ -168,7 +187,7 @@ export function PlotMapView({ plots, farmCenter, onPlotClick, className }: PlotM
         ))}
       </MapContainer>
 
-      <div className="bg-card border-t p-2 flex items-center justify-center gap-4 text-xs">
+      <div className="bg-card border-t p-2 flex flex-wrap items-center justify-center gap-4 text-xs">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.ok.fill }} />
           <span>OK</span>
@@ -179,12 +198,15 @@ export function PlotMapView({ plots, farmCenter, onPlotClick, className }: PlotM
         </div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.critical.fill }} />
-          <span>Critico</span>
+          <span>Crítico</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded" style={{ backgroundColor: STATUS_COLORS.offline.fill }} />
           <span>Offline</span>
         </div>
+        <span className="text-muted-foreground mx-2">|</span>
+        <span className="text-muted-foreground" title="Condutividade Elétrica - mede a salinidade do solo">CE = Cond. Elétrica</span>
+        <span className="text-muted-foreground" title="Potencial Hidrogeniônico - mede a acidez/alcalinidade">pH = Acidez</span>
       </div>
     </div>
   );

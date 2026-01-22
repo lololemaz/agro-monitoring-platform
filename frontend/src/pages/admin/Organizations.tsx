@@ -348,14 +348,16 @@ export default function Organizations() {
       owner_last_name: editForm.owner_last_name.trim() || undefined,
     };
 
-    // Only include password if resetting
-    if (editForm.resetPassword && editForm.owner_password) {
-      payload.owner_password = editForm.owner_password;
-    }
-
     setIsSaving(true);
     try {
+      // Update organization data
       await adminService.updateOrganization(selectedOrg.id, payload);
+      
+      // If resetting password, use the dedicated endpoint
+      if (editForm.resetPassword && editForm.owner_password && selectedOrg.owner_id) {
+        await adminService.resetUserPassword(selectedOrg.owner_id, editForm.owner_password);
+      }
+      
       toast.success('Organização atualizada com sucesso');
       setIsEditOpen(false);
       resetEditForm();

@@ -52,7 +52,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
-type MetricTab = 'moisture' | 'temperature' | 'ec' | 'nitrogen' | 'phosphorus' | 'potassium';
+type MetricTab = 'moisture' | 'temperature' | 'ec' | 'ph' | 'nitrogen' | 'phosphorus' | 'potassium';
 
 interface LocalNote {
   id: string;
@@ -224,7 +224,7 @@ export default function PlotDetail() {
           <KpiCard
             title="CE"
             value={currentSoil?.ec != null ? `${Number(currentSoil.ec).toFixed(2)}` : '-'}
-            subtitle="mS/cm"
+            subtitle="µS/cm"
             icon={Zap}
           />
           <KpiCard
@@ -247,6 +247,29 @@ export default function PlotDetail() {
             value={plot.estimated_yield ? `${(Number(plot.estimated_yield) / 1000).toFixed(1)}t` : '-'}
             icon={TrendingUp}
           />
+        </div>
+
+        {/* Legenda das siglas */}
+        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground bg-muted/30 rounded-lg px-4 py-2">
+          <span className="font-medium text-foreground">Legenda:</span>
+          <span title="Condutividade Elétrica - mede a concentração de sais/nutrientes no solo. Valores ideais: 0.8-2.0 µS/cm">
+            <strong>CE</strong> = Condutividade Elétrica
+          </span>
+          <span title="Potencial Hidrogeniônico - mede a acidez ou alcalinidade do solo. Valores ideais: 6.0-7.5">
+            <strong>pH</strong> = Acidez do Solo
+          </span>
+          <span title="Índice de Vegetação por Diferença Normalizada - indica a saúde da vegetação. Valores ideais: 0.6-1.0">
+            <strong>NDVI</strong> = Índice de Vegetação
+          </span>
+          <span title="Nitrogênio - macronutriente essencial para crescimento. Valores ideais: 20-50 ppm">
+            <strong>N</strong> = Nitrogênio
+          </span>
+          <span title="Fósforo - importante para raízes e floração. Valores ideais: 15-40 ppm">
+            <strong>P</strong> = Fósforo
+          </span>
+          <span title="Potássio - essencial para qualidade dos frutos. Valores ideais: 100-200 ppm">
+            <strong>K</strong> = Potássio
+          </span>
         </div>
 
         {currentVision && (
@@ -347,6 +370,13 @@ export default function PlotDetail() {
                   <span className="hidden sm:inline">CE</span>
                 </TabsTrigger>
                 <TabsTrigger 
+                  value="ph" 
+                  className="flex items-center gap-1.5 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+                >
+                  <Target className="w-4 h-4" />
+                  <span className="hidden sm:inline">pH</span>
+                </TabsTrigger>
+                <TabsTrigger 
                   value="nitrogen" 
                   className="flex items-center gap-1.5 px-4 py-2 data-[state=active]:bg-chart-nitrogen data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
                 >
@@ -374,6 +404,9 @@ export default function PlotDetail() {
               </TabsContent>
               <TabsContent value="ec">
                 <MetricChart data={chartData} metric="ec" />
+              </TabsContent>
+              <TabsContent value="ph">
+                <MetricChart data={chartData} metric="ph" />
               </TabsContent>
               <TabsContent value="nitrogen">
                 <MetricChart data={chartData} metric="nitrogen" />

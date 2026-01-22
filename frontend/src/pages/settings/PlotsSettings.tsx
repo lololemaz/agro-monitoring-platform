@@ -800,6 +800,7 @@ export default function PlotsSettings() {
             <div className="grid gap-2">
               <Label>Area do Talhao (desenhe no mapa)</Label>
               <PolygonEditor
+                key={`edit-${selectedPlot?.id || 'new'}-${formData.polygon.length}`}
                 center={selectedFarmCenter}
                 defaultPolygon={formData.polygon}
                 onPolygonChange={(polygon) => setFormData({ ...formData, polygon })}

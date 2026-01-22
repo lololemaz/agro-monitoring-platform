@@ -107,7 +107,7 @@ export function PlotDrawer({ plot, open, onOpenChange }: PlotDrawerProps) {
               iconColor="text-chart-ec"
               label="CE"
               value={soil?.ec != null
-                ? `${Number(soil.ec).toFixed(2)} mS/cm`
+                ? `${Number(soil.ec).toFixed(2)} µS/cm`
                 : 'N/A'}
             />
             <MetricCard

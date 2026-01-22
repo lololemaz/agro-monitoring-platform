@@ -202,19 +202,39 @@ export function useFarmData(farmId: string | null): UseFarmDataResult {
     if (plots.length === 0) return defaultStats;
 
     const onlinePlots = plots.filter(p => p.status !== 'offline');
-    const avgMoisture = onlinePlots.length > 0
-      ? onlinePlots.reduce((sum, p) => sum + (p.current_soil_reading?.moisture ?? 0), 0) / onlinePlots.length
+    
+    // Helper to safely get numeric values and filter valid ones
+    const getValidValues = (accessor: (p: PlotWithReadings) => number | string | null | undefined): number[] => {
+      return onlinePlots
+        .map(p => {
+          const val = accessor(p);
+          if (val === null || val === undefined) return NaN;
+          const num = Number(val);
+          return isNaN(num) ? NaN : num;
+        })
+        .filter(v => !isNaN(v));
+    };
+    
+    const moistureValues = getValidValues(p => p.current_soil_reading?.moisture);
+    const temperatureValues = getValidValues(p => p.current_soil_reading?.temperature);
+    const phValues = getValidValues(p => p.current_soil_reading?.ph);
+    
+    const avgMoisture = moistureValues.length > 0
+      ? moistureValues.reduce((sum, v) => sum + v, 0) / moistureValues.length
       : 0;
-    const avgTemperature = onlinePlots.length > 0
-      ? onlinePlots.reduce((sum, p) => sum + (p.current_soil_reading?.temperature ?? 0), 0) / onlinePlots.length
+    const avgTemperature = temperatureValues.length > 0
+      ? temperatureValues.reduce((sum, v) => sum + v, 0) / temperatureValues.length
       : 0;
-    const avgPh = onlinePlots.length > 0
-      ? onlinePlots.reduce((sum, p) => sum + (p.current_soil_reading?.ph ?? 0), 0) / onlinePlots.length
+    const avgPh = phValues.length > 0
+      ? phValues.reduce((sum, v) => sum + v, 0) / phValues.length
       : 0;
     
-    const totalTrees = plots.reduce((sum, p) => sum + (p.tree_count || 0), 0);
-    const estimatedYield = plots.reduce((sum, p) => sum + (p.estimated_yield || 0), 0);
-    const avgHealth = plots.reduce((sum, p) => sum + (p.health_score || 0), 0) / plots.length;
+    const totalTrees = plots.reduce((sum, p) => sum + (Number(p.tree_count) || 0), 0);
+    const estimatedYield = plots.reduce((sum, p) => sum + (Number(p.estimated_yield) || 0), 0);
+    const healthScores = plots.map(p => Number(p.health_score) || 0).filter(v => !isNaN(v));
+    const avgHealth = healthScores.length > 0 
+      ? healthScores.reduce((sum, v) => sum + v, 0) / healthScores.length 
+      : 0;
 
     return {
       totalPlots: plots.length,

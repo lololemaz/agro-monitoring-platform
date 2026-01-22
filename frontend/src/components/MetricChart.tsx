@@ -14,7 +14,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
-type MetricKey = 'moisture' | 'temperature' | 'ec' | 'nitrogen' | 'phosphorus' | 'potassium';
+type MetricKey = 'moisture' | 'temperature' | 'ec' | 'ph' | 'nitrogen' | 'phosphorus' | 'potassium';
 
 interface MetricChartProps {
   data: SoilReading[];
@@ -27,14 +27,16 @@ const metricConfig: Record<MetricKey, {
   label: string;
   unit: string;
   color: string;
+  decimals: number;
   domain?: [number, number];
 }> = {
-  moisture: { label: 'Umidade', unit: '%', color: 'hsl(var(--chart-moisture))' },
-  temperature: { label: 'Temperatura', unit: '°C', color: 'hsl(var(--chart-temperature))' },
-  ec: { label: 'EC', unit: 'mS/cm', color: 'hsl(var(--chart-ec))' },
-  nitrogen: { label: 'Nitrogênio (N)', unit: 'ppm', color: 'hsl(var(--chart-nitrogen))' },
-  phosphorus: { label: 'Fósforo (P)', unit: 'ppm', color: 'hsl(var(--chart-phosphorus))' },
-  potassium: { label: 'Potássio (K)', unit: 'ppm', color: 'hsl(var(--chart-potassium))' },
+  moisture: { label: 'Umidade', unit: '%', color: 'hsl(var(--chart-moisture))', decimals: 1 },
+  temperature: { label: 'Temperatura', unit: '°C', color: 'hsl(var(--chart-temperature))', decimals: 1 },
+  ec: { label: 'CE', unit: 'µS/cm', color: 'hsl(var(--chart-ec))', decimals: 2 },
+  ph: { label: 'pH', unit: '', color: 'hsl(var(--chart-ph))', decimals: 2 },
+  nitrogen: { label: 'Nitrogênio (N)', unit: 'ppm', color: 'hsl(var(--chart-nitrogen))', decimals: 1 },
+  phosphorus: { label: 'Fósforo (P)', unit: 'ppm', color: 'hsl(var(--chart-phosphorus))', decimals: 1 },
+  potassium: { label: 'Potássio (K)', unit: 'ppm', color: 'hsl(var(--chart-potassium))', decimals: 1 },
 };
 
 export function MetricChart({ data, metric, showIdealRange = true, className }: MetricChartProps) {
@@ -86,8 +88,8 @@ export function MetricChart({ data, metric, showIdealRange = true, className }: 
             tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
             tickLine={false}
             axisLine={{ stroke: 'hsl(var(--border))' }}
-            width={40}
-            tickFormatter={(value) => Number(value).toFixed(metric === 'ec' ? 1 : 0)}
+            width={45}
+            tickFormatter={(value) => Number(value).toFixed(config.decimals)}
           />
 
           <Tooltip
@@ -98,7 +100,7 @@ export function MetricChart({ data, metric, showIdealRange = true, className }: 
               fontSize: 12,
             }}
             formatter={(value: number | string) => [
-              `${Number(value).toFixed(metric === 'ec' ? 2 : 1)} ${config.unit}`,
+              `${Number(value).toFixed(config.decimals)}${config.unit ? ' ' + config.unit : ''}`,
               config.label
             ]}
             labelFormatter={(value) => format(new Date(value), "dd/MM HH:mm", { locale: ptBR })}
