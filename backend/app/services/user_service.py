@@ -158,8 +158,26 @@ class UserService:
 
     def change_password(self, user: User, new_password: str) -> User:
         """Altera a senha do usuário."""
-        user.password_hash = get_password_hash(new_password)
+        # Gera o hash da nova senha
+        password_hash = get_password_hash(new_password)
+        # Garante que é uma string (não bytes)
+        if isinstance(password_hash, bytes):
+            password_hash = password_hash.decode("utf-8")
+        
+        # Garante que o objeto está na sessão atual
+        # Se não estiver, faz merge para garantir que está na sessão correta
+        if user not in self.db:
+            user = self.db.merge(user)
+        
+        # Atualiza o hash no objeto
+        user.password_hash = password_hash
+        
+        # Flush para garantir que a mudança é detectada pela sessão
+        self.db.flush()
+        # Commit para persistir no banco de dados
         self.db.commit()
+        # Expira o objeto da sessão e recarrega do banco para garantir sincronização
+        self.db.expire(user)
         self.db.refresh(user)
         return user
 

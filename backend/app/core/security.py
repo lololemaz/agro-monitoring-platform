@@ -36,14 +36,33 @@ def verify_token(token: str) -> dict[str, Any] | None:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifica se a senha está correta."""
-    password_bytes = plain_password.encode("utf-8")
-    hashed_bytes = hashed_password.encode("utf-8")
-    return bcrypt.checkpw(password_bytes, hashed_bytes)
+    try:
+        password_bytes = plain_password.encode("utf-8")
+        # Garante que hashed_password é uma string
+        if isinstance(hashed_password, bytes):
+            hashed_bytes = hashed_password
+        else:
+            hashed_bytes = hashed_password.encode("utf-8")
+        return bcrypt.checkpw(password_bytes, hashed_bytes)
+    except (ValueError, TypeError, AttributeError) as e:
+        # Log do erro em produção para debug
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erro ao verificar senha: {e}, tipo: {type(hashed_password)}")
+        return False
 
 
 def get_password_hash(password: str) -> str:
     """Gera hash da senha."""
+    # Garante que a senha é uma string
+    if not isinstance(password, str):
+        raise ValueError("A senha deve ser uma string")
+    
     password_bytes = password.encode("utf-8")
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password_bytes, salt)
-    return hashed.decode("utf-8")
+    
+    # Garante que o resultado é uma string UTF-8 válida
+    if isinstance(hashed, bytes):
+        return hashed.decode("utf-8")
+    return str(hashed)
