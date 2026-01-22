@@ -356,9 +356,13 @@ export default function Organizations() {
       // If resetting password, use the dedicated endpoint
       if (editForm.resetPassword && editForm.owner_password && selectedOrg.owner_id) {
         await adminService.resetUserPassword(selectedOrg.owner_id, editForm.owner_password);
+        toast.success(
+          `Senha do proprietário atualizada com sucesso. Use o email "${selectedOrg.owner_email}" para fazer login.`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.success('Organização atualizada com sucesso');
       }
-      
-      toast.success('Organização atualizada com sucesso');
       setIsEditOpen(false);
       resetEditForm();
       setSelectedOrg(null);
@@ -446,7 +450,8 @@ export default function Organizations() {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Empresa</TableHead>
-              <TableHead>E-mail</TableHead>
+              <TableHead>E-mail Org.</TableHead>
+              <TableHead>E-mail Owner (Login)</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-[70px]"></TableHead>
             </TableRow>
@@ -454,7 +459,7 @@ export default function Organizations() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <div className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                     Carregando...
@@ -463,7 +468,7 @@ export default function Organizations() {
               </TableRow>
             ) : filteredOrgs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <div className="flex flex-col items-center gap-2">
                     <Building2 className="w-8 h-8 text-muted-foreground" />
                     <p className="text-muted-foreground">
@@ -478,6 +483,9 @@ export default function Organizations() {
                   <TableCell className="font-medium">{org.name}</TableCell>
                   <TableCell>{org.company_name || '-'}</TableCell>
                   <TableCell>{org.email || '-'}</TableCell>
+                  <TableCell>
+                    <span className="font-mono text-sm">{org.owner_email || '-'}</span>
+                  </TableCell>
                   <TableCell>
                     <Badge variant={org.is_active ? 'default' : 'secondary'}>
                       {org.is_active ? 'Ativa' : 'Inativa'}
@@ -594,7 +602,7 @@ export default function Organizations() {
               <span className="text-sm font-medium">Usuário Proprietário (Owner)</span>
             </div>
             <p className="text-xs text-muted-foreground -mt-2">
-              Este usuário terá acesso total à organização
+              Este usuário terá acesso total à organização. O email do proprietário será usado para fazer login no sistema.
             </p>
 
             <div className="grid grid-cols-2 gap-4">
@@ -741,6 +749,21 @@ export default function Organizations() {
               <UserPlus className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">Proprietário da Organização</span>
             </div>
+            
+            {/* Email do Owner - usado para login */}
+            {selectedOrg?.owner_email && (
+              <div className="rounded-lg border bg-muted/50 p-3">
+                <p className="text-xs font-medium text-muted-foreground mb-1">
+                  Email para login:
+                </p>
+                <p className="text-sm font-mono font-medium">
+                  {selectedOrg.owner_email}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  ⚠️ Use este email (do proprietário) para fazer login, não o email da organização
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
