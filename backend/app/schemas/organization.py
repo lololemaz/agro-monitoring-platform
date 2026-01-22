@@ -40,6 +40,7 @@ class OrganizationUpdate(BaseModel):
     settings: dict | None = None
     is_active: bool | None = None
     # Dados do owner (opcional)
+    owner_email: EmailStr | None = None
     owner_first_name: str | None = None
     owner_last_name: str | None = None
     owner_password: str | None = None

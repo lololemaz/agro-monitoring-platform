@@ -68,9 +68,11 @@ class OrganizationService:
 
     def update(self, organization: Organization, org_data: OrganizationUpdate) -> Organization:
         """Atualiza dados da organização e owner."""
+        from app.services.user_service import UserService
+        
         update_data = org_data.model_dump(exclude_unset=True)
         
-        owner_fields = ['owner_first_name', 'owner_last_name', 'owner_password']
+        owner_fields = ['owner_email', 'owner_first_name', 'owner_last_name', 'owner_password']
         owner_updates = {k: v for k, v in update_data.items() if k in owner_fields}
         org_updates = {k: v for k, v in update_data.items() if k not in owner_fields}
         
@@ -80,6 +82,17 @@ class OrganizationService:
         if owner_updates:
             owner = self.get_owner(organization)
             if owner:
+                user_service = UserService(self.db)
+                
+                # Verifica se o email do owner está sendo alterado
+                if 'owner_email' in owner_updates and owner_updates['owner_email']:
+                    new_email = owner_updates['owner_email']
+                    # Verifica se o novo email já está em uso por outro usuário
+                    existing_user = user_service.get_by_email_any_org(new_email)
+                    if existing_user and existing_user.id != owner.id:
+                        raise ValueError(f"O email {new_email} já está em uso por outro usuário")
+                    owner.email = new_email
+                
                 if 'owner_first_name' in owner_updates:
                     owner.first_name = owner_updates['owner_first_name']
                 if 'owner_last_name' in owner_updates:
