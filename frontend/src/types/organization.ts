@@ -48,6 +48,7 @@ export interface OrganizationUpdate {
   settings?: Record<string, unknown>;
   is_active?: boolean;
   // Owner fields (for updating owner data)
+  owner_email?: string;
   owner_first_name?: string;
   owner_last_name?: string;
   owner_password?: string; // Only if resetting password

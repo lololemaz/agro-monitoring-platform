@@ -119,6 +119,7 @@ interface EditFormData {
   email: string;
   phone: string;
   address: string;
+  owner_email: string;
   owner_first_name: string;
   owner_last_name: string;
   owner_password: string;
@@ -145,6 +146,7 @@ const initialEditForm: EditFormData = {
   email: '',
   phone: '',
   address: '',
+  owner_email: '',
   owner_first_name: '',
   owner_last_name: '',
   owner_password: '',
@@ -322,6 +324,12 @@ export default function Organizations() {
     if (editForm.phone && !isValidPhone(editForm.phone)) {
       return 'Telefone deve ter 10 ou 11 dígitos';
     }
+    if (!editForm.owner_email.trim()) {
+      return 'E-mail do proprietário é obrigatório';
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.owner_email)) {
+      return 'E-mail do proprietário inválido';
+    }
     if (editForm.resetPassword && editForm.owner_password.length < 8) {
       return 'A nova senha deve ter pelo menos 8 caracteres';
     }
@@ -344,6 +352,7 @@ export default function Organizations() {
       email: editForm.email.trim() || undefined,
       phone: onlyNumbers(editForm.phone) || undefined,
       address: editForm.address.trim() || undefined,
+      owner_email: editForm.owner_email.trim() || undefined,
       owner_first_name: editForm.owner_first_name.trim() || undefined,
       owner_last_name: editForm.owner_last_name.trim() || undefined,
     };
@@ -351,17 +360,26 @@ export default function Organizations() {
     setIsSaving(true);
     try {
       // Update organization data
-      await adminService.updateOrganization(selectedOrg.id, payload);
+      const updatedOrg = await adminService.updateOrganization(selectedOrg.id, payload);
       
       // If resetting password, use the dedicated endpoint
-      if (editForm.resetPassword && editForm.owner_password && selectedOrg.owner_id) {
-        await adminService.resetUserPassword(selectedOrg.owner_id, editForm.owner_password);
+      if (editForm.resetPassword && editForm.owner_password && updatedOrg.owner_id) {
+        await adminService.resetUserPassword(updatedOrg.owner_id, editForm.owner_password);
+        const loginEmail = updatedOrg.owner_email || editForm.owner_email.trim();
         toast.success(
-          `Senha do proprietário atualizada com sucesso. Use o email "${selectedOrg.owner_email}" para fazer login.`,
+          `Senha do proprietário atualizada com sucesso. Use o email "${loginEmail}" para fazer login.`,
           { duration: 5000 }
         );
       } else {
-        toast.success('Organização atualizada com sucesso');
+        const emailChanged = editForm.owner_email.trim() !== (selectedOrg.owner_email || '');
+        if (emailChanged) {
+          toast.success(
+            `Organização atualizada com sucesso. O email de login do proprietário foi alterado para "${editForm.owner_email.trim()}".`,
+            { duration: 5000 }
+          );
+        } else {
+          toast.success('Organização atualizada com sucesso');
+        }
       }
       setIsEditOpen(false);
       resetEditForm();
@@ -400,6 +418,7 @@ export default function Organizations() {
       email: org.email || '',
       phone: org.phone ? formatPhone(org.phone) : '',
       address: org.address || '',
+      owner_email: org.owner_email || '',
       owner_first_name: org.owner_first_name || '',
       owner_last_name: org.owner_last_name || '',
       owner_password: '',
@@ -751,19 +770,19 @@ export default function Organizations() {
             </div>
             
             {/* Email do Owner - usado para login */}
-            {selectedOrg?.owner_email && (
-              <div className="rounded-lg border bg-muted/50 p-3">
-                <p className="text-xs font-medium text-muted-foreground mb-1">
-                  Email para login:
-                </p>
-                <p className="text-sm font-mono font-medium">
-                  {selectedOrg.owner_email}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  ⚠️ Use este email (do proprietário) para fazer login, não o email da organização
-                </p>
-              </div>
-            )}
+            <div className="grid gap-2">
+              <Label htmlFor="edit-owner_email">E-mail do Proprietário (Login) *</Label>
+              <Input
+                id="edit-owner_email"
+                type="email"
+                value={editForm.owner_email}
+                onChange={(e) => setEditForm({ ...editForm, owner_email: e.target.value })}
+                placeholder="proprietario@empresa.com"
+              />
+              <p className="text-xs text-muted-foreground">
+                ⚠️ Este é o email usado para fazer login no sistema. Não confunda com o email da organização.
+              </p>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">

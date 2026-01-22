@@ -147,7 +147,13 @@ async def update_organization(
             detail="Organização não encontrada",
         )
 
-    updated_org = org_service.update(organization, org_data)
+    try:
+        updated_org = org_service.update(organization, org_data)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     
     owner = org_service.get_owner(updated_org)
     result = OrganizationWithOwner.model_validate(updated_org)
