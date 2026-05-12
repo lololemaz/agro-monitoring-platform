@@ -152,14 +152,15 @@ async def get_plot_soil_readings(
     db: Session = Depends(get_db),
     start_time: datetime | None = None,
     end_time: datetime | None = None,
-    limit: int = Query(default=100, le=1000),
+    limit: int | None = Query(default=None, ge=1),
 ):
     """Obtem leituras de solo de um talhao.
 
     Parametros:
         start_time: Filtrar leituras a partir desta data
         end_time: Filtrar leituras ate esta data
-        limit: Numero maximo de leituras (padrao: 100, max: 1000)
+        limit: Numero maximo de leituras. Se omitido, retorna todas as leituras
+            do intervalo (sem limite).
     """
     query = get_user_plots_query(db, current_user)
     plot = query.filter(Plot.id == plot_id).first()
@@ -178,7 +179,10 @@ async def get_plot_soil_readings(
     if end_time:
         readings_query = readings_query.filter(SoilReading.time <= end_time)
 
-    return readings_query.limit(limit).all()
+    if limit is not None:
+        readings_query = readings_query.limit(limit)
+
+    return readings_query.all()
 
 
 @router.get("/{plot_id}/vision-data", response_model=list[VisionDataResponse])
@@ -188,14 +192,15 @@ async def get_plot_vision_data(
     db: Session = Depends(get_db),
     start_time: datetime | None = None,
     end_time: datetime | None = None,
-    limit: int = Query(default=100, le=1000),
+    limit: int | None = Query(default=None, ge=1),
 ):
     """Obtem dados de visao computacional de um talhao.
 
     Parametros:
         start_time: Filtrar dados a partir desta data
         end_time: Filtrar dados ate esta data
-        limit: Numero maximo de registros (padrao: 100, max: 1000)
+        limit: Numero maximo de registros. Se omitido, retorna todos os
+            registros do intervalo (sem limite).
     """
     query = get_user_plots_query(db, current_user)
     plot = query.filter(Plot.id == plot_id).first()
@@ -214,7 +219,10 @@ async def get_plot_vision_data(
     if end_time:
         vision_query = vision_query.filter(VisionData.time <= end_time)
 
-    return vision_query.limit(limit).all()
+    if limit is not None:
+        vision_query = vision_query.limit(limit)
+
+    return vision_query.all()
 
 
 def calculate_plot_status(soil: SoilReading | None, vision: VisionData | None) -> str:

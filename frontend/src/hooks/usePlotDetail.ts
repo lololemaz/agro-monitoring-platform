@@ -90,8 +90,8 @@ export function usePlotDetail(
 
       const [plotData, soilData, visionDataResult, sensorsData] = await Promise.all([
         plotsService.getPlot(plotId),
-        plotsService.getSoilReadings(plotId, { start_time: startTime, end_time: endTime, limit: 500 }),
-        plotsService.getVisionData(plotId, { start_time: startTime, end_time: endTime, limit: 100 }),
+        plotsService.getSoilReadings(plotId, { start_time: startTime, end_time: endTime }),
+        plotsService.getVisionData(plotId, { start_time: startTime, end_time: endTime }),
         sensorsService.getSensors({ plot_id: plotId }),
       ]);
 

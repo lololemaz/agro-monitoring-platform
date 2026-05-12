@@ -101,9 +101,7 @@ export default function PlotDetail() {
     })).reverse();
   }, [soilReadings]);
 
-  const recentReadings = useMemo(() => {
-    return soilReadings.slice(0, 20);
-  }, [soilReadings]);
+  const recentReadings = useMemo(() => soilReadings, [soilReadings]);
 
   if (isLoading) {
     return (
@@ -516,6 +514,9 @@ export default function PlotDetail() {
             <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
               <Clock className="w-5 h-5 text-muted-foreground" />
               Leituras Recentes
+              <span className="ml-auto text-xs font-normal text-muted-foreground">
+                {recentReadings.length} {recentReadings.length === 1 ? 'leitura' : 'leituras'}
+              </span>
             </h2>
             <ScrollArea className="h-[400px]">
               {recentReadings.length === 0 ? (
