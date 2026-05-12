@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { usePlotDetail, TimePeriod, TIME_PERIOD_OPTIONS } from "@/hooks/usePlotDetail";
+import { usePlotDetail, TimePeriod, TimeFilter, TIME_PERIOD_OPTIONS } from "@/hooks/usePlotDetail";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { MetricChart } from "@/components/MetricChart";
@@ -47,10 +47,15 @@ import {
   TrendingUp,
   RefreshCw,
   Timer,
+  CalendarRange,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+
+function toDateTimeLocal(d: Date): string {
+  return d.toISOString().slice(0, 16);
+}
 
 type MetricTab = 'moisture' | 'temperature' | 'ec' | 'ph' | 'nitrogen' | 'phosphorus' | 'potassium';
 
@@ -64,9 +69,21 @@ interface LocalNote {
 export default function PlotDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>('1h');
-  const { plot, soilReadings, visionData, sensors, isLoading, refresh } = usePlotDetail(id, timePeriod);
-  
+
+  // --- Filtro de período ---
+  type FilterMode = 'relative' | 'custom';
+  const [filterMode, setFilterMode] = useState<FilterMode>('relative');
+  const [relativePeriod, setRelativePeriod] = useState<TimePeriod>('1h');
+  const [customStartInput, setCustomStartInput] = useState<string>(
+    () => toDateTimeLocal(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+  );
+  const [customEndInput, setCustomEndInput] = useState<string>(
+    () => toDateTimeLocal(new Date())
+  );
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>({ mode: 'relative', period: '1h' });
+
+  const { plot, soilReadings, visionData, sensors, isLoading, refresh } = usePlotDetail(id, timeFilter);
+
   const [activeMetric, setActiveMetric] = useState<MetricTab>('moisture');
   const [noteText, setNoteText] = useState("");
   const [notes, setNotes] = useState<LocalNote[]>([]);
@@ -171,11 +188,49 @@ export default function PlotDetail() {
               </BreadcrumbList>
             </Breadcrumb>
 
-            <div className="ml-auto flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Timer className="w-4 h-4 text-muted-foreground" />
-                <Select value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)}>
-                  <SelectTrigger className="w-[140px] h-9">
+            <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
+              {/* Alternância de modo */}
+              <div className="flex rounded-md border border-border overflow-hidden h-9">
+                <button
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 text-xs font-medium transition-colors",
+                    filterMode === 'relative'
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card text-muted-foreground hover:bg-muted"
+                  )}
+                  onClick={() => {
+                    setFilterMode('relative');
+                    setTimeFilter({ mode: 'relative', period: relativePeriod });
+                  }}
+                >
+                  <Timer className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Tempo Real</span>
+                </button>
+                <button
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 text-xs font-medium transition-colors border-l border-border",
+                    filterMode === 'custom'
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card text-muted-foreground hover:bg-muted"
+                  )}
+                  onClick={() => setFilterMode('custom')}
+                >
+                  <CalendarRange className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Período</span>
+                </button>
+              </div>
+
+              {/* Modo relativo: select de período */}
+              {filterMode === 'relative' && (
+                <Select
+                  value={relativePeriod}
+                  onValueChange={(v) => {
+                    const p = v as TimePeriod;
+                    setRelativePeriod(p);
+                    setTimeFilter({ mode: 'relative', period: p });
+                  }}
+                >
+                  <SelectTrigger className="w-[130px] h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -186,8 +241,40 @@ export default function PlotDetail() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <Button variant="outline" size="icon" onClick={refresh}>
+              )}
+
+              {/* Modo personalizado: datas de início e fim */}
+              {filterMode === 'custom' && (
+                <>
+                  <Input
+                    type="datetime-local"
+                    value={customStartInput}
+                    onChange={(e) => setCustomStartInput(e.target.value)}
+                    className="h-9 w-[175px] text-xs px-2"
+                  />
+                  <span className="text-muted-foreground text-xs">→</span>
+                  <Input
+                    type="datetime-local"
+                    value={customEndInput}
+                    onChange={(e) => setCustomEndInput(e.target.value)}
+                    className="h-9 w-[175px] text-xs px-2"
+                  />
+                  <Button
+                    size="sm"
+                    className="h-9"
+                    onClick={() => {
+                      if (customStartInput && customEndInput) {
+                        setTimeFilter({ mode: 'custom', startDate: customStartInput, endDate: customEndInput });
+                      }
+                    }}
+                    disabled={!customStartInput || !customEndInput}
+                  >
+                    Aplicar
+                  </Button>
+                </>
+              )}
+
+              <Button variant="outline" size="icon" onClick={refresh} title="Atualizar dados">
                 <RefreshCw className="w-4 h-4" />
               </Button>
               <div className={cn(
@@ -341,7 +428,10 @@ export default function PlotDetail() {
               <div>
                 <h2 className="font-semibold text-lg">Leituras Historicas</h2>
                 <p className="text-sm text-muted-foreground">
-                  {TIME_PERIOD_OPTIONS.find(o => o.value === timePeriod)?.label} • {soilReadings.length} leituras
+                  {timeFilter.mode === 'relative'
+                    ? TIME_PERIOD_OPTIONS.find(o => o.value === timeFilter.period)?.label
+                    : `${format(new Date(timeFilter.startDate), "dd/MM/yy HH:mm", { locale: ptBR })} → ${format(new Date(timeFilter.endDate), "dd/MM/yy HH:mm", { locale: ptBR })}`
+                  } • {soilReadings.length} leituras
                 </p>
               </div>
             </div>

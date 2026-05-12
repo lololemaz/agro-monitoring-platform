@@ -8,6 +8,10 @@ const AUTO_REFRESH_INTERVAL = 30000; // 30 segundos
 
 export type TimePeriod = '10m' | '30m' | '1h' | '6h' | '24h' | '7d';
 
+export type TimeFilter =
+  | { mode: 'relative'; period: TimePeriod }
+  | { mode: 'custom'; startDate: string; endDate: string };
+
 export const TIME_PERIOD_OPTIONS: { value: TimePeriod; label: string }[] = [
   { value: '10m', label: '10 minutos' },
   { value: '30m', label: '30 minutos' },
@@ -37,6 +41,16 @@ function getStartTimeFromPeriod(period: TimePeriod): string {
   }
 }
 
+function getTimeRange(filter: TimeFilter): { startTime: string; endTime?: string } {
+  if (filter.mode === 'relative') {
+    return { startTime: getStartTimeFromPeriod(filter.period) };
+  }
+  return {
+    startTime: new Date(filter.startDate).toISOString(),
+    endTime: new Date(filter.endDate).toISOString(),
+  };
+}
+
 interface UsePlotDetailResult {
   plot: PlotWithReadings | null;
   soilReadings: SoilReading[];
@@ -47,7 +61,10 @@ interface UsePlotDetailResult {
   refresh: () => Promise<void>;
 }
 
-export function usePlotDetail(plotId: string | undefined, period: TimePeriod = '24h'): UsePlotDetailResult {
+export function usePlotDetail(
+  plotId: string | undefined,
+  filter: TimeFilter = { mode: 'relative', period: '24h' }
+): UsePlotDetailResult {
   const [plot, setPlot] = useState<PlotWithReadings | null>(null);
   const [soilReadings, setSoilReadings] = useState<SoilReading[]>([]);
   const [visionData, setVisionData] = useState<VisionData[]>([]);
@@ -69,12 +86,12 @@ export function usePlotDetail(plotId: string | undefined, period: TimePeriod = '
     setError(null);
 
     try {
-      const startTime = getStartTimeFromPeriod(period);
-      
+      const { startTime, endTime } = getTimeRange(filter);
+
       const [plotData, soilData, visionDataResult, sensorsData] = await Promise.all([
         plotsService.getPlot(plotId),
-        plotsService.getSoilReadings(plotId, { start_time: startTime, limit: 500 }),
-        plotsService.getVisionData(plotId, { start_time: startTime, limit: 100 }),
+        plotsService.getSoilReadings(plotId, { start_time: startTime, end_time: endTime, limit: 500 }),
+        plotsService.getVisionData(plotId, { start_time: startTime, end_time: endTime, limit: 100 }),
         sensorsService.getSensors({ plot_id: plotId }),
       ]);
 
@@ -100,28 +117,28 @@ export function usePlotDetail(plotId: string | undefined, period: TimePeriod = '
     } finally {
       setIsLoading(false);
     }
-  }, [plotId, period]);
+  }, [plotId, filter]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Auto-refresh a cada 30 segundos
+  // Auto-refresh apenas no modo relativo (tempo real)
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   useEffect(() => {
-    if (!plotId) return;
-    
+    if (!plotId || filter.mode !== 'relative') return;
+
     intervalRef.current = setInterval(() => {
       loadData();
     }, AUTO_REFRESH_INTERVAL);
-    
+
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [plotId, loadData]);
+  }, [plotId, loadData, filter.mode]);
 
   return {
     plot,
